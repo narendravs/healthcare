@@ -9,6 +9,7 @@ import { Form, FormField } from "@/components/ui/form";
 import { createUser } from "@/lib/actions/patient.actions";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
+
 const PatientForm = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
@@ -44,7 +45,7 @@ const PatientForm = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="container flex flex-col space-y-4 border-1 rounded-lg bg-white-500 w-full p-10"
+        className="container flex flex-col space-y-4 border-1 rounded-bl-lg rounded-br-lg bg-white-500 w-full p-10"
       >
         <section className="mb-12 space-y-4">
           <h1 className="header">Create Patient</h1>
@@ -76,9 +77,10 @@ const PatientForm = () => {
           control={form.control}
           name="phone"
           label="Phone number"
+          iconSrc="/assets/icons/user.svg"
           placeholder="(555) 123-4567"
         />
-        <div className="flex items-center justify-content-center">
+        <div className="flex items-center justify-content-end  xl:ml-[30px]">
           <SubmitButton isLoading={isLoading}>Get Started</SubmitButton>
         </div>
       </form>
