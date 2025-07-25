@@ -33,7 +33,7 @@ const DataTable = <TData, TValue>({
     typeof window !== "undefined" ? localStorage.getItem("accessKey") : null;
 
   // useEffect(() => {
-  //   const accessKey = encryptKey && decryptKey(encryptKey.toString());
+  //   const accessKey = encyptedKey && decryptKey(encyptedKey.toString());
   //   if (accessKey !== process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString())
   //     redirect("/");
   // }, [encyptedKey]);
