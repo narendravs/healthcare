@@ -35,7 +35,7 @@ const RegisterForm = ({ user }: { user: User }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const form = useForm({
-    // resolver: zodResolver(PatientFormValidation),
+    resolver: zodResolver(PatientFormValidation),
     defaultValues: {
       ...PatientFormDefaultValues,
 
@@ -46,9 +46,6 @@ const RegisterForm = ({ user }: { user: User }) => {
   });
 
   const onSubmit = async (data: z.infer<typeof PatientFormValidation>) => {
-    alert("Form submitted successfully!");
-    alert(user.$id);
-    console.log(data);
     setIsLoading(true);
     let formData = new FormData();
     if (
@@ -85,7 +82,8 @@ const RegisterForm = ({ user }: { user: User }) => {
         currentMedication: data.currentMedication ?? "",
         familyMedicalHistory: data.familyMedicalHistory ?? "",
         pastMedicalHistory: data.pastMedicalHistory ?? "",
-        identificationType: data.identificationType ?? "",
+        identificationType:
+          data.identificationType?.replace(/[^a-zA-Z0-9_-]/g, "") ?? "",
         identificationNumber: data.identificationNumber ?? "",
         identificationDocument: data.identificationDocument
           ? formData
