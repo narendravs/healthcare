@@ -45,7 +45,7 @@ const PatientForm = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="container flex flex-col space-y-4 border-1 rounded-bl-lg rounded-br-lg bg-white-500 w-full p-10"
+        className="container flex flex-col space-y-4 border-1 rounded-bl-lg rounded-br-lg bg-white-500 w-full space-x-4 p-10"
       >
         <section className="mb-12 space-y-4">
           <h1 className="header">Create Patient</h1>
@@ -80,7 +80,7 @@ const PatientForm = () => {
           iconSrc="/assets/icons/user.svg"
           placeholder="(555) 123-4567"
         />
-        <div className="flex items-center justify-content-end  xl:ml-[30px]">
+        <div className="flex  sm:ml-[10px] xl:ml-[30px]">
           <SubmitButton isLoading={isLoading}>Get Started</SubmitButton>
         </div>
       </form>
