@@ -1,0 +1,605 @@
+@import "tailwindcss";
+
+/* @import "@radix-ui/colors/black-alpha.css";
+@import "@radix-ui/colors/mauve.css";
+@import "@radix-ui/colors/red.css";
+@import "@radix-ui/colors/violet.css"; */
+
+/* reset */
+button {
+  all: unset;
+}
+
+@layer base {
+  /* Remove scrollbar */
+  .remove-scrollbar::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    border-radius: 0px;
+  }
+
+  .remove-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .remove-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 0px;
+  }
+
+  .remove-scrollbar::-webkit-scrollbar-thumb:hover {
+    /* background: #1e2238; */
+    background: transparent;
+  }
+}
+.custom-date-time-picker-popper {
+  z-index: 2147483646 !important; /* slightly lower than react-datepicker */
+  position: fixed !important;
+}
+.custom-date-time-picker-popper {
+  z-index: 2147483646 !important; /* slightly lower than react-datepicker */
+  position: fixed !important;
+}
+.date-picker {
+  overflow: hidden;
+  border-color: transparent;
+  width: 100%;
+  /* Otherwise, you can replace it directly with a color value, e.g., */
+  placeholder-color: #71717a; /* or any appropriate color */
+  height: 2.75rem; /* h-11 (assuming 11 * 0.25rem = 2.75rem) */
+  /*  If "text-14-medium" is a custom Tailwind text size class, it likely corresponds to: */
+  font-size: 14px; /* text-14 */
+  font-weight: 500; /* medium  */
+  border-radius: 0.375rem; /* rounded-md (assuming default border radius = 0.375rem) */
+  padding-left: 0.75rem; /* px-3 (left) */
+  padding-right: 0.75rem; /* px-3 (right) */
+  outline: none !important;
+  border-style: none; /* Add this line to explicitly set border-style to none */
+}
+@layer utilities {
+  .sub-container {
+    @apply mx-auto flex size-full flex-col py-2;
+  }
+  .text-14-regular {
+    @apply text-[14px] leading-[18px] font-normal;
+  }
+  .side-img {
+    @apply hidden h-full object-cover md:block;
+  }
+}
+
+/* Larger screens */
+.rdp-spacing .rdp-day,
+.rdp-spacing .rdp-nav_button {
+  padding: 0.1rem;
+  margin: 0.05rem;
+}
+
+.AlertDialogContent {
+  background-color: whitesmoke;
+  border-radius: 6px;
+  box-shadow: var(--shadow-6);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 500px;
+  max-height: 85vh;
+  padding: 25px;
+  animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.AlertDialogContent:focus {
+  outline: none;
+}
+
+.AlertDialogTitle {
+  margin: 0;
+  color: var(--mauve-12);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.AlertDialogDescription {
+  margin-bottom: 20px;
+  color: var(--mauve-11);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.Button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 0 15px;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 500;
+  height: 35px;
+  user-select: none;
+}
+.Button:focus:not(:focus-visible) {
+  outline: 0;
+}
+.Button:focus-visible {
+  outline: 2px solid var(--violet-6);
+  outline-offset: 1px;
+}
+.Button.violet {
+  background-color: var(--violet-4);
+  color: var(--violet-12);
+  outline-color: var(--violet-6);
+}
+.Button.violet:hover {
+  background-color: var(--mauve-3);
+}
+.Button.red {
+  background-color: var(--red-4);
+  color: var(--red-11);
+  outline-color: var(--red-7);
+}
+.Button.red:hover {
+  background-color: var(--red-5);
+}
+.Button.mauve {
+  background-color: var(--mauve-4);
+  color: var(--mauve-11);
+  outline-color: var(--mauve-7);
+}
+.Button.mauve:hover {
+  background-color: var(--mauve-5);
+}
+
+@keyframes overlayShow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes contentShow {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/*===== Shadcn UI Styles =====*/
+.shad-input {
+  background-color: #eef0f3; /* bg-dark-400 */
+  color: black; /* text color (optional, adjust as needed) */
+  height: 1.75rem; /* h-11 */
+  border-radius: 5px;
+  width: 350px;
+  padding: 5px;
+}
+
+.shad-input::placeholder {
+  color: gray; /* placeholder:text-dark-600 */
+}
+.shad-textArea {
+  background-color: #ecedf0; /* bg-dark-400 */
+  color: black; /* text color (optional, adjust as needed) */
+  border-radius: 5px;
+  width: 290px;
+  box-sizing: border-box;
+  resize: none;
+}
+
+@media (min-width: 1024px) {
+  .shad-textArea {
+    width: 350px;
+  }
+}
+
+.shad-textArea::placeholder {
+  color: gray; /* placeholder:text-dark-600 */
+}
+
+.shad-textArea:focus-visible {
+  box-shadow: none; /* focus-visible:ring-0 */
+  outline-offset: 0; /* focus-visible:ring-offset-0 */
+}
+.shad-primary-btn {
+  background-color: #22c55e; /* bg-green-500 */
+  color: #fff; /* text-white */
+  width: 290px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  padding: 5px;
+  font-weight: 500;
+}
+.copyright {
+  font-size: 14px; /* text-14-regular */
+  line-height: 18px; /* text-14-regular */
+  font-weight: 400; /* text-14-regular (font-normal) */
+  justify-items: end; /* justify-items-end */
+  text-align: center; /* text-center */
+  color: #52525b; /* text-dark-600 (adjust if your palette differs) */
+}
+
+.sub-header {
+  font-size: 18px;
+  font-weight: bold;
+}
+.radio-group {
+  display: flex;
+  height: 100%;
+  flex: 1 1 0%;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+  border-radius: 0.375rem; /* rounded-md */
+  border: 1px dashed #27272a; /* border-dark-500 */
+  background-color: #eef0f3; /* bg-dark-400 */
+  padding: 0.75rem; /* p-3 */
+}
+.checkbox-label {
+  cursor: pointer;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  color: #27272a; /* text-dark-700 */
+}
+
+.peer:disabled ~ .checkbox-label,
+.checkbox-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+/* Style for the select trigger (the button/input that opens the dropdown) */
+.shad-select-trigger {
+  background-color: #eef0f3; /* bg-dark-400 */
+  color: #27272a; /* text-dark-600 */
+  height: 2.75rem; /* h-11 */
+  outline: none; /* focus:ring-0 */
+  box-shadow: none; /* focus:ring-offset-0 */
+  border-radius: 0.375rem; /* rounded-md */
+  padding: 0 1rem;
+  font-size: 1rem;
+  width: fit-content;
+  font-weight: 500;
+}
+
+/* Style for the select dropdown content */
+.shad-select-content {
+  background-color: #eef0f3; /* bg-dark-400 */
+  border-radius: 0.375rem;
+  color: #27272a;
+  font-size: 1rem;
+  width: fit-content;
+  font-weight: 400;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+  z-index: 2147483646 !important;
+  position: absolute !important; /* Or fixed, if it's not working */
+}
+
+/* Optional: style the options inside the dropdown */
+.shad-select-content [role="option"] {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.shad-select-content [role="option"]:hover,
+.shad-select-content [role="option"][aria-selected="true"] {
+  background-color: #dbeafe; /* light blue highlight */
+  color: #1e293b;
+}
+
+.checkbox-label {
+  cursor: pointer;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  color: #27272a; /* text-dark-700 */
+}
+
+/* Disabled state for accessibility */
+input:disabled + .checkbox-label,
+.checkbox-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Style for the checkbox input */
+.shad-checkbox {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #27272a;
+  border-radius: 0.25rem;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.shad-danger-btn {
+  background-color: #b91c1c; /* Tailwind's red-700 */
+  color: #fff;
+  border: #1e293b 1px solid; /* border-dark-600 */
+  border-radius: 5px;
+  padding: 5px;
+  font-weight: 500;
+  width: 290px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shad-danger-btn:hover {
+  background-color: #991b1b; /* Tailwind's red-600 */
+  border: #1e293b 1px solid; /* border-dark-600 */
+}
+
+.success_img {
+  margin: auto;
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.request-details {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem; /* gap-8 = 2rem */
+  border-top-width: 2px;
+  border-bottom-width: 2px;
+  border-color: #22223b; /* Replace with your actual --color-dark-400 if using CSS variables */
+  padding-top: 2rem; /* py-8 = 2rem top and bottom */
+  padding-bottom: 2rem;
+}
+.admin-header {
+  position: sticky;
+  top: 0.75rem; /* top-3 = 0.75rem */
+  z-index: 20;
+  margin-left: 0.75rem; /* mx-3 = 0.75rem left and right */
+  margin-right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* rounded-2xl = 1rem */
+  background-color: #90cdf4; /* bg-dark-200 (replace with your actual color if different) */
+  padding-left: 5%; /* px-[5%] = 5% left and right */
+  padding-right: 5%;
+  padding-top: 1.25rem; /* py-5 = 1.25rem top and bottom */
+  padding-bottom: 1.25rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+}
+
+.admin-stat {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.25rem; /* gap-5 = 1.25rem */
+}
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding-left: 5%; /* px-[5%] */
+  padding-right: 5%;
+  padding-bottom: 3rem; /* pb-12 = 3rem */
+}
+.data-table {
+  z-index: 10;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.5rem; /* 8px */
+  border: 1px solid #4a5568; /* Assuming a dark gray for dark-400 */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.shad-table {
+  border-radius: 0.5rem !important; /* 8px */
+  overflow: hidden !important;
+}
+.shad-table-row-header {
+  border-bottom: 1px solid #4a5568 !important; /* Assuming a dark gray for dark-400 */
+  /* color: #e5e7eb !important;  */
+  opacity: 0.5;
+}
+.shad-table-row-header:hover {
+  background-color: transparent !important;
+}
+.stat-card {
+  display: flex;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0%; /* flex-1 is equivalent to flex: 1 1 0% */
+  flex-direction: column;
+  gap: 1.5rem; /* Equivalent to Tailwind's gap-6 (1.5 * 16px = 24px) */
+  border-radius: 1rem; /* Equivalent to Tailwind's rounded-2xl (16px) */
+  background-size: cover; /* Equivalent to Tailwind's bg-cover */
+  padding: 1.5rem; /* Equivalent to Tailwind's p-6 (1.5 * 16px = 24px) */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Equivalent to Tailwind's shadow-lg */
+}
+.shad-dialog {
+  background-color: #4a5568 !important; /* Assuming a medium-dark gray for dark-400 */
+  border-color: #2d3748 !important; /* Assuming a darker gray for dark-500 */
+}
+.shad-dialog button:focus,
+.shad-dialog button:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important; /* This covers ring, ring-offset, and ring-color properties */
+}
+
+.table-actions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem; /* 16px */
+}
+
+.table-actions > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse)); /* 8px */
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.shad-gray-btn {
+  border: 1px solid #2d3748 !important; /* Assuming a darker gray for dark-500 */
+  cursor: pointer !important;
+  background-color: #4a5568 !important; /* Assuming a medium-dark gray for dark-400 */
+  color: #ffffff !important;
+}
+.shad-alert-dialog {
+  background-color: #4a5568 !important;
+  border-color: #2d3748 !important;
+  outline: none !important;
+}
+
+.shad-gray-btn {
+  border: 1px solid #2d3748 !important; /* Assuming a darker gray for dark-500 */
+  cursor: pointer !important;
+  background-color: #4a5568 !important; /* Assuming a medium-dark gray for dark-400 */
+  color: #ffffff !important;
+}
+
+.input-phone {
+  margin-top: 0.5rem; /* mt-2 */
+  height: 1.75rem;
+  border-radius: 0.375rem; /* rounded-md */
+  padding-left: 0.75rem; /* px-3 */
+  padding-right: 0.75rem; /* px-3 */
+  font-size: 0.875rem; /* text-sm */
+  border-style: solid;
+  background-color: #eef0f3; /* bg-dark-400 */
+}
+
+.input-phone::placeholder {
+  color: gray; /* placeholder:text-dark-600 */
+}
+
+.form-error-message {
+  color: #b91c1c; /* Tailwind's red-700 */
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding-left: 5%; /* px-[5%] */
+  padding-right: 5%;
+  padding-bottom: 3rem; /* pb-12 = 3rem */
+}
+
+@media (min-width: 640px) {
+  /* sm: */
+  .shad-textArea {
+    width: 350px;
+  }
+  .admin-stat {
+    flex-direction: row;
+  }
+}
+
+@media (min-width: 1280px) {
+  .shad-primary-btn {
+    width: 340px;
+  }
+  .shad-danger-btn {
+    width: 340px;
+  }
+  .admin-main {
+    gap: 3rem; /* space-y-12 = 3rem */
+    padding-left: 3rem; /* px-12 = 3rem */
+    padding-right: 3rem;
+  }
+  .admin-stat {
+    gap: 2.5rem; /* gap-10 = 2.5rem */
+  }
+  .admin-header {
+    padding-left: 3rem; /* xl:px-12 = 3rem left and right */
+    padding-right: 3rem;
+  }
+  .copyright {
+    text-align: left;
+  }
+
+  .header {
+    font-size: 25px;
+    font-weight: bold;
+  }
+
+  .sub-header {
+    font-size: 18px;
+    font-weight: bold;
+  }
+}
+@media (min-width: 768px) {
+  .shad-textArea {
+    width: 350px;
+  } /* md:block */
+  .request-details {
+    width: fit-content;
+    flex-direction: row;
+  }
+  .side-img {
+    display: block;
+  }
+}
+@media (max-width: 768px) {
+  .shad-primary-btn {
+    /* margin-left: 30px; */
+    width: 90%;
+  }
+  .rdp-spacing .rdp-day,
+  .rdp-spacing .rdp-nav_button {
+    padding: 0.125rem;
+    margin: 0.0625rem;
+  }
+  .checkbox-label {
+    line-height: 1; /* md:leading-none */
+  }
+  .header {
+    font-size: 36px;
+  }
+  .sub-header {
+    font-size: 24px;
+  }
+  .checkbox-label {
+    line-height: 1; /* md:leading-none */
+  }
+  .shad-input {
+    background-color: #eef0f3; /* bg-dark-400 */
+    color: black; /* text color (optional, adjust as needed) */
+    height: 1.75rem; /* h-11 */
+    border-radius: 5px;
+    width: 85%;
+    padding: 5px;
+    /* margin: 5px; */
+  }
+
+  .side-img {
+    display: none; /* Hide the side image on smaller screens */
+    overflow: visible !important;
+  }
+  .checkbox-label {
+    line-height: 1; /* md:leading-none */
+  }
+  .sub-header {
+    font-size: 24px;
+  }
+}
