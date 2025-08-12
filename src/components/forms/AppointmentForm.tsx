@@ -8,7 +8,7 @@ import { getAppointmentSchema } from "@/lib/validation";
 import { z } from "zod";
 import { Form } from "@/components/ui/form";
 import CustomFormField, { FormFieldType } from "@/components/CustomFormField";
-import { Doctors } from "../../constants/index";
+import { Doctors } from "@/constants/index";
 import { SelectItem } from "@/components/ui/select";
 import Image from "next/image";
 import SubmitButton from "@/components/SubmitButton";
@@ -18,8 +18,6 @@ import {
   updateAppointment,
   cancelOppoitment,
 } from "@/lib/actions/appointment.actions";
-import { appointmentType } from "../../constants/index";
-import { useSearchParams } from "next/navigation";
 
 // type can be "create", "schedule", or "cancel"
 // "create" is used for creating a new appointment
