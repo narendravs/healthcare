@@ -1,6 +1,6 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormProvider } from "react-hook-form";
+
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,13 +16,13 @@ import {
   GenderOptions,
   IdentificationTypes,
   PatientFormDefaultValues,
-} from "../../constants";
+} from "@/constants/index";
 import { registerPatient } from "@/lib/actions/patient.actions";
-import { PatientFormValidation } from "../../lib/validation";
+import { PatientFormValidation } from "@/lib/validation";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
 import FileUploader from "../FileUploader";
-import { consentOptions } from "../../constants/index";
+import { consentOptions } from "@/constants/index";
 import * as Sentry from "@sentry/nextjs"; //testing the api request latancy and sending the status for the fetch request.
 
 class SentryExampleFrontendError extends Error {
