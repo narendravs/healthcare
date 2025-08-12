@@ -14,9 +14,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ChatBox from "@/components/chat/ChatBox";
 const Home = () => {
   const [mounted, setMounted] = useState(false);
-
+  const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
@@ -26,6 +27,13 @@ const Home = () => {
     if (admin === "true") setIsAdmin(true);
     setMounted(true);
   }, [admin]);
+
+  const openChat = () => {
+    setOpen(true);
+  };
+  const closeChat = () => {
+    setOpen(false);
+  };
 
   return (
     <div className="flex flex-row min-h-screen  ">
@@ -45,8 +53,23 @@ const Home = () => {
             </span>
           </div>
           <PatientForm />
-          <div className="text-14-regular mt-10 flex px-2 justify-between">
+          <div className="text-14-regular mt-10 flex flex-row px-2 justify-between">
             <p className="text-dark-600 xl:text-left ">© 2024 CarePluse</p>
+            <Button
+              onClick={openChat}
+              className="flex flex-col items-center justify-center gap-2"
+            >
+              <p className="text-small">
+                Hey! chat with me about patient detais and appointments ?
+              </p>
+              <Image
+                src="/chat-svgrepo-com.svg"
+                alt="chat box"
+                width={30}
+                height={30}
+                className="cursor-pointer ml-[50%] mt-2"
+              />
+            </Button>
             <Link href="/?admin=true" className="text-green-500">
               Admin
             </Link>
@@ -93,6 +116,7 @@ const Home = () => {
             </h1>
           </span>
         </div>
+        {open && <ChatBox onClose={closeChat} />}
       </div>
     </div>
   );
