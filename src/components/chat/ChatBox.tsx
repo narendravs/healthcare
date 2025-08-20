@@ -10,8 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-const ChatBox = ({ onClose }: any) => {
+
+const ChatBox = ({ onClose, type }: any) => {
   const [message, setMessage] = useState([
     { role: "bot", content: "Hello! How can I help you today?" },
   ]);
@@ -25,21 +25,41 @@ const ChatBox = ({ onClose }: any) => {
     setMessage((prvMsg) => [...prvMsg, newMessage]);
     setInput("");
     try {
-      const response = await fetch(
-        "/api/embeddings/search/pineconeEmbedSearch",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ query: input }),
+      let data: any = [];
+
+      if (type === "database") {
+        const response = await fetch(
+          `/api/embeddings/search/pineconeEmbedSearch`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query: input, type: type }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to Fecth response from API");
         }
-      );
-      const data = await response.json();
-      console.log("data.....", data.results);
-      if (!response.ok) {
-        throw new Error("Failed to Fecth response from API");
+        data = await response.json();
+      } else if (type === "documents") {
+        const response = await fetch(
+          `/api/embeddings/search/pineconeEmbedSearch`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query: input, type: type }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to Fecth response from API");
+        }
+        data = await response.json();
       }
+
+      console.log("data.....", data.results);
 
       if (data.results && data.results.length > 0) {
         const botMessages = data.results.map((match: any) => ({
@@ -73,7 +93,12 @@ const ChatBox = ({ onClose }: any) => {
       <Card className="w-[350px] bg-white dark:bg-gray-800">
         <CardHeader className="flex flex-row items-center justify-content-between">
           <CardTitle className="text-lg">Chat</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="cursor-pointer"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -84,7 +109,7 @@ const ChatBox = ({ onClose }: any) => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="lucide lucide-x"
+              className="lucide lucide-x "
             >
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -111,7 +136,11 @@ const ChatBox = ({ onClose }: any) => {
               placeholder="Type your query...."
               className="flex-1"
             />
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="cursor-pointer"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -122,7 +151,7 @@ const ChatBox = ({ onClose }: any) => {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="lucide lucide-send-horizontal"
+                className="lucide lucide-send-horizontal "
               >
                 <path d="m3 3 3 9-3 9 19-9Z" />
                 <path d="M6 12h16" />
