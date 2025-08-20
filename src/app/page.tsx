@@ -19,6 +19,7 @@ const Home = () => {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const type = "database";
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
@@ -116,7 +117,7 @@ const Home = () => {
             </h1>
           </span>
         </div>
-        {open && <ChatBox onClose={closeChat} />}
+        {open && <ChatBox onClose={closeChat} type={type} />}
       </div>
     </div>
   );
