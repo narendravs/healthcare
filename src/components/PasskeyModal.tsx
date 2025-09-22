@@ -26,22 +26,44 @@ const PasskeyModal = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [passkey, setPassKey] = useState("");
   const [error, setError] = useState("");
-
-  const encryptedKey =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("accessKey")
-      : null;
+  const [isClient, setIsClient] = useState(false); // New state to track if we're on the client
 
   useEffect(() => {
+    setIsClient(true); // Set to true after the component mounts on the client
+  }, []);
+
+  useEffect(() => {
+    const encryptedKey = localStorage.getItem("accessKey");
+    if (!isClient) return; // Only run this effect on the client
     const accessKey = encryptedKey && decryptKey(encryptedKey);
-    if (path)
-      if (accessKey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString()) {
+    console.log("Decrypted Access Key:", accessKey);
+
+    if (path) {
+      if (accessKey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY) {
+        console.log("Access key matched");
         setIsOpen(false);
         router.push("/admin");
       } else {
         setIsOpen(true);
       }
-  }, [encryptedKey]);
+    }
+  }, [isClient, path, router]); // Dependency on isClient, path, and router
+
+  // const encryptedKey =
+  //   typeof window !== "undefined"
+  //     ? window.localStorage.getItem("accessKey")
+  //     : null;
+
+  // useEffect(() => {
+  //   const accessKey = encryptedKey && decryptKey(encryptedKey);
+  //   if (path)
+  //     if (accessKey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString()) {
+  //       setIsOpen(false);
+  //       router.push("/admin");
+  //     } else {
+  //       setIsOpen(true);
+  //     }
+  // }, [encryptedKey]);
 
   const closeModal = () => {
     setIsOpen(false);
@@ -52,6 +74,7 @@ const PasskeyModal = () => {
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
+
     if (passkey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY) {
       const encryptedKey = encryptKey(passkey);
       localStorage.setItem("accessKey", encryptedKey);
