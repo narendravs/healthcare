@@ -1,6 +1,6 @@
 "use server";
 import { ID, Query } from "node-appwrite";
-import { InputFile } from "node-appwrite/file";
+import { InputFile } from "node-appwrite";
 import {
   ENDPOINT,
   BUCKET_ID,
@@ -12,7 +12,7 @@ import {
   users,
 } from "./appwrite.config";
 import { parseStringify } from "../utils";
-import { RegisterUserParams } from "../../types/index";
+import { RegisterUserParams } from "@/types/index";
 
 type CreateUserParams = {
   email: string;
@@ -58,12 +58,15 @@ export const registerPatient = async (data: RegisterUserParams) => {
   const { identificationDocument, ...patientData } = data;
   try {
     //Upload file
+    const blobFile = data.identificationDocument?.get("blobFile") as Blob;
+    const arrayBuffer = await blobFile?.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     let file;
     if (data.identificationDocument) {
       const inputFile =
         data.identificationDocument &&
         InputFile.fromBuffer(
-          data.identificationDocument?.get("blobFile") as Blob,
+          buffer,
           data.identificationDocument?.get("fileName") as string
         );
       file = await storage.createFile(BUCKET_ID!, ID.unique(), inputFile);
@@ -96,6 +99,7 @@ export const getPatient = async (userId: string) => {
       PATIENT_COLLECTION_ID,
       [Query.equal("userId", userId)]
     );
+    console.log("Patients found:", patients.documents[0]);
     return parseStringify(patients.documents[0]);
   } catch (error) {
     console.log(
@@ -104,3 +108,24 @@ export const getPatient = async (userId: string) => {
     );
   }
 };
+
+export async function getUserByExactName(name: string) {
+  try {
+    console.log("Searching for user with name:", name);
+    const response = await users.list();
+
+    // Find the first user with a name that exactly matches the input
+    const user = response.users.find((u) => u.name === name.toLowerCase());
+
+    if (user) {
+      console.log("Found user:", user);
+      return user;
+    } else {
+      console.log("User not found.");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
+}
