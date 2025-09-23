@@ -9,14 +9,14 @@ import { Form, FormField } from "@/components/ui/form";
 import { createUser } from "@/lib/actions/patient.actions";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
-import * as Sentry from "@sentry/nextjs"; //testing the api request latancy
+// import * as Sentry from "@sentry/nextjs"; //testing the api request latancy
 
-class SentryExampleFrontendError extends Error {
-  constructor(message: string | undefined) {
-    super(message);
-    this.name = "SentryExampleFrontendError";
-  }
-}
+// class SentryExampleFrontendError extends Error {
+//   constructor(message: string | undefined) {
+//     super(message);
+//     this.name = "SentryExampleFrontendError";
+//   }
+// }
 const PatientForm = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
@@ -33,9 +33,9 @@ const PatientForm = () => {
   const onSubmit = async (data: z.infer<typeof UserFormValidation>) => {
     setIsLoading(true);
     try {
-      const transaction = Sentry.startInactiveSpan({
-        name: "Create user to register the patient details.",
-      });
+      // const transaction = Sentry.startInactiveSpan({
+      //   name: "Create user to register the patient details.",
+      // });
       const user = await createUser({
         email: data.email,
         phone: data.phone,
@@ -44,12 +44,12 @@ const PatientForm = () => {
       if (user) {
         router.push(`/patients/${user.$id}/register`);
       }
-      transaction.end();
+      // transaction.end();
     } catch (error) {
       console.log(error);
-      throw new SentryExampleFrontendError(
-        "This error is raised while creating the user."
-      );
+      // throw new SentryExampleFrontendError(
+      //   "This error is raised while creating the user."
+      // );
     } finally {
       setIsLoading(false);
     }
