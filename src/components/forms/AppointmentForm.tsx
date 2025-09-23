@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Appointment, Status } from "@/types/appwrite.types";
+import { Appointment } from "@/types/appwrite.types";
+import { Status } from "@/types/index";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
