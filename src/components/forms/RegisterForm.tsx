@@ -23,14 +23,14 @@ import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
 import FileUploader from "../FileUploader";
 import { consentOptions } from "@/constants/index";
-import * as Sentry from "@sentry/nextjs"; //testing the api request latancy and sending the status for the fetch request.
+// import * as Sentry from "@sentry/nextjs"; //testing the api request latancy and sending the status for the fetch request.
 
-class SentryExampleFrontendError extends Error {
-  constructor(message: string | undefined) {
-    super(message);
-    this.name = "SentryExampleFrontendError";
-  }
-}
+// class SentryExampleFrontendError extends Error {
+//   constructor(message: string | undefined) {
+//     super(message);
+//     this.name = "SentryExampleFrontendError";
+//   }
+// }
 
 type User = {
   $id: string;
@@ -72,67 +72,62 @@ const RegisterForm = ({ user }: { user: User }) => {
       formData.append("privacyConsent[]", consent);
     });
     try {
-      const userData = await Sentry.startSpan(
-        {
-          name: `fetch-user-data-${user.$id}`,
-          op: "http.request.create",
-          attributes: { routr: `GET /users/${user.name}` },
-        },
-        async (span) => {
-          console.log(
-            `Inside fetchUserData span callback for user ${user.$id}.`
-          );
-          span.setAttribute("userId", user.$id); // Add custom data to the span
+      // const userData = await Sentry.startSpan(
+      //   {
+      //     name: `fetch-user-data-${user.$id}`,
+      //     op: "http.request.create",
+      //     attributes: { routr: `GET /users/${user.name}` },
+      //   },
+      //   async (span) => {
+      //     console.log(
+      //       `Inside fetchUserData span callback for user ${user.$id}.`
+      //     );
+      //     span.setAttribute("userId", user.$id); // Add custom data to the span
 
-          // Simulate network delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          const transaction = Sentry.startInactiveSpan({
-            name: "Create Data Operation in RegisterForm",
-          });
-          const patient = {
-            userId: user.$id,
-            name: data.name,
-            email: data.email,
-            phone: data.phone,
-            birthDate: new Date(data.birthDate),
-            gender: data.gender,
-            address: data.address,
-            occupation: data.occupation ?? "",
-            emergencyContactName: data.emergencyContactName ?? "",
-            emergencyContactNumber: data.emergencyContactNumber ?? "",
-            primaryPhysician: data.primaryPhysician ?? "",
-            insuranceProvider: data.insuranceProvider ?? "",
-            insurancePolicyNumber: data.insurancePolicyNumber ?? "",
-            allergies: data.allergies ?? "",
-            currentMedication: data.currentMedication ?? "",
-            familyMedicalHistory: data.familyMedicalHistory ?? "",
-            pastMedicalHistory: data.pastMedicalHistory ?? "",
-            identificationType:
-              data.identificationType?.replace(/[^a-zA-Z0-9_-]/g, "") ?? "",
-            identificationNumber: data.identificationNumber ?? "",
-            identificationDocument: data.identificationDocument
-              ? formData
-              : undefined,
-            privacyConsent: data.privacyConsent ? formData : undefined,
-          };
+      //     // Simulate network delay
+      //     await new Promise((resolve) => setTimeout(resolve, 500));
+      //     const transaction = Sentry.startInactiveSpan({
+      //       name: "Create Data Operation in RegisterForm",
+      //     });
+      const patient = {
+        userId: user.$id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        birthDate: new Date(data.birthDate),
+        gender: data.gender,
+        address: data.address,
+        occupation: data.occupation ?? "",
+        emergencyContactName: data.emergencyContactName ?? "",
+        emergencyContactNumber: data.emergencyContactNumber ?? "",
+        primaryPhysician: data.primaryPhysician ?? "",
+        insuranceProvider: data.insuranceProvider ?? "",
+        insurancePolicyNumber: data.insurancePolicyNumber ?? "",
+        allergies: data.allergies ?? "",
+        currentMedication: data.currentMedication ?? "",
+        familyMedicalHistory: data.familyMedicalHistory ?? "",
+        pastMedicalHistory: data.pastMedicalHistory ?? "",
+        identificationType:
+          data.identificationType?.replace(/[^a-zA-Z0-9_-]/g, "") ?? "",
+        identificationNumber: data.identificationNumber ?? "",
+        identificationDocument: data.identificationDocument
+          ? formData
+          : undefined,
+        privacyConsent: data.privacyConsent ? formData : undefined,
+      };
 
-          const newPatient = await registerPatient(patient);
-          if (newPatient) {
-            router.push(`/patients/${user.$id}/new-appointment`);
-          }
-          console.log(
-            `Register data for user ${newPatient.$id}:`,
-            newPatient.name
-          );
-          span.setStatus(newPatient);
-          transaction.end();
-        }
-      );
+      const newPatient = await registerPatient(patient);
+      if (newPatient) {
+        router.push(`/patients/${user.$id}/new-appointment`);
+      }
+      console.log(`Register data for user ${newPatient.$id}:`, newPatient.name);
+      // span.setStatus(newPatient);
+      // transaction.end();
     } catch (error) {
       console.log(error);
-      throw new SentryExampleFrontendError(
-        "This error is raised while register the patient details."
-      );
+      // throw new SentryExampleFrontendError(
+      //   "This error is raised while register the patient details."
+      // );
     }
     setIsLoading(false);
   };
