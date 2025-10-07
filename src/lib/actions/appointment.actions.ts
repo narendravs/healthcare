@@ -19,6 +19,7 @@ import {
 export const createAppointment = async (
   appointment: CreateAppointmentParams
 ) => {
+  console.log("Creating appointment:", appointment);
   try {
     const newAppointment = await databases.createDocument(
       DATABASE_ID!,

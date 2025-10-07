@@ -29,14 +29,12 @@ const DataTable = <TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) => {
-  const encyptedKey =
-    typeof window !== "undefined" ? localStorage.getItem("accessKey") : null;
-
-  // useEffect(() => {
-  //   const accessKey = encyptedKey && decryptKey(encyptedKey.toString());
-  //   if (accessKey !== process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString())
-  //     redirect("/");
-  // }, [encyptedKey]);
+  useEffect(() => {
+    const encyptedKey = localStorage.getItem("accessKey") ?? "";
+    const accessKey = encyptedKey && decryptKey(encyptedKey.toString());
+    if (accessKey !== process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString())
+      redirect("/");
+  }, []);
 
   const table = useReactTable({
     data,
