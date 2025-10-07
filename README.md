@@ -53,7 +53,7 @@ Follow these instructions to get a copy of the project up and running on your lo
     Create a `.env.local` file in the root of your project and add the necessary environment variables from your Appwrite and Pinecone project dashboards.
 
     ### ==================================================
-    #        ####REQUIRED ENVIRONMENT VARIABLES
+    #        ####REQUIRED ENVIRONMENT VARIABLES####
     ### ==================================================
 
     ### -----------------------------------------------
