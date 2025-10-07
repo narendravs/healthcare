@@ -52,64 +52,61 @@ Follow these instructions to get a copy of the project up and running on your lo
 
     Create a `.env.local` file in the root of your project and add the necessary environment variables from your Appwrite and Pinecone project dashboards.
 
-    
-# ==================================================
-#        **REQUIRED ENVIRONMENT VARIABLES**
-# ==================================================
+    ### ==================================================
+    #        ### REQUIRED ENVIRONMENT VARIABLES
+    ### ==================================================
 
-# -----------------------------------------------
-# **1. Appwrite Data Base API Configuration**
-# -----------------------------------------------
-# **Get these credentials from your Appwrite project dashboard.**
-    NEXT_PUBLIC_ENDPOINT="[Your Appwrite Endpoint URL]"
-    PROJECT_ID="[Your Appwrite Project ID]"
-    API_KEY="[Your Appwrite API Key]"
-    DATABASE_ID="[Your Appwrite Database ID]"
-    PATIENT_COLLECTION_ID="[Your Patient Collection ID]"
-    DOCTOR_COLLECTION_ID="[Your Doctor Collection ID]"
-    APPOINTMENT_COLLECTION_ID="[Your Appointment Collection ID]"
-    NEXT_PUBLIC_BUCKET_ID="[Your Appwrite Storage Bucket ID]"
-    NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
+    ### -----------------------------------------------
+    # #### 1. Appwrite Data Base API Configuration
+    ### -----------------------------------------------
+    # #### Get these credentials from your Appwrite project dashboard.
+        NEXT_PUBLIC_ENDPOINT="[Your Appwrite Endpoint URL]"
+        PROJECT_ID="[Your Appwrite Project ID]"
+        API_KEY="[Your Appwrite API Key]"
+        DATABASE_ID="[Your Appwrite Database ID]"
+        PATIENT_COLLECTION_ID="[Your Patient Collection ID]"
+        DOCTOR_COLLECTION_ID="[Your Doctor Collection ID]"
+        APPOINTMENT_COLLECTION_ID="[Your Appointment Collection ID]"
+        NEXT_PUBLIC_BUCKET_ID="[Your Appwrite Storage Bucket ID]"
+        NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
 
-# -----------------------------------------------
-# **2. AI Model & Search Configuration**
-# -----------------------------------------------
-    # Open API Configuration
-    OPENAI_API_KEY="[Your OpenAI API Key]"
+    ### -----------------------------------------------
+    # #### 2. AI Model & Search Configuration
+    ### -----------------------------------------------
+        # Open API Configuration
+            OPENAI_API_KEY="[Your OpenAI API Key]"    
 
-    # Pinecone API Key
-    PINECONE_API_KEY="[Your Pinecone API Key]"
+        # Pinecone API Key
+            PINECONE_API_KEY="[Your Pinecone API Key]"
 
-    # For AI Agents supporting from huggingface & Langchain
-    GROQ_API_KEY="[Your Groq API Key]"
+        # For AI Agents supporting from huggingface & Langchain
+            GROQ_API_KEY="[Your Groq API Key]"
 
-# -----------------------------------------------
-# **3. Pinecone Index Configuration**
-# -----------------------------------------------
-    # For Document Search (e.g., medical documents)
-    PINECONE_DOC_INDEX_NAME="[Pinecone Document Index Name]"
-    PINECONE_DOC_INDEX_HOST="[Pinecone Document Index Host URL]"
-    PINECONE_DOC_INDEX_NAME_SPACE="[Pinecone Document Namespace]"
+    ### -----------------------------------------------
+    # #### 3. Pinecone Index Configuration
+    ### -----------------------------------------------
+        # For Document Search (e.g., medical documents)
+            PINECONE_DOC_INDEX_NAME="[Pinecone Document Index Name]"
+            PINECONE_DOC_INDEX_HOST="[Pinecone Document Index Host URL]"
+            PINECONE_DOC_INDEX_NAME_SPACE="[Pinecone Document Namespace]"
 
-    # For Data Base Search (e.g., patient records)
-    PINECONE_DB_INDEX_NAME="[Pinecone DB Index Name]"
-    PINECONE_DB_INDEX_HOST="[Pinecone DB Index Host URL]"
-    PINECONE_DB_INDEX_NAME_SPACE="[Pinecone DB Namespace]"
+        # For Data Base Search (e.g., patient records)
+            PINECONE_DB_INDEX_NAME="[Pinecone DB Index Name]"
+            PINECONE_DB_INDEX_HOST="[Pinecone DB Index Host URL]"
+            PINECONE_DB_INDEX_NAME_SPACE="[Pinecone DB Namespace]"
 
-# -----------------------------------------------
-# **4. Other Configuration**
-# -----------------------------------------------
-    # Timestamp File for Cron Job Persistence (e.g., a file path)
-    LAST_CHECKED_TIMESTAMP_FILE="[Path/to/timestamp_file.txt]"
+    ### -----------------------------------------------
+    # #### 4. Other Configuration
+    ### -----------------------------------------------
+        # Timestamp File for Cron Job Persistence (e.g., a file path)
+          LAST_CHECKED_TIMESTAMP_FILE="[Path/to/timestamp_file.txt]"
 
-    # SERVER PORT (Commonly 3000 or 8080)
-    PORT=3000
+        # SERVER PORT (Commonly 3000 or 8080)
+          PORT=3000
 
-    # Duplication of Admin Passkey for clarity (can remove one instance)
-    NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
+        # Duplication of Admin Passkey for clarity (can remove one instance)
+          NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
  
-   
-
 4.  **Run the development server:**
 
     ```bash
