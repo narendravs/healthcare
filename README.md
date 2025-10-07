@@ -53,13 +53,13 @@ Follow these instructions to get a copy of the project up and running on your lo
     Create a `.env.local` file in the root of your project and add the necessary environment variables from your Appwrite and Pinecone project dashboards.
 
     ### ==================================================
-    #        ### REQUIRED ENVIRONMENT VARIABLES
+    #        ####REQUIRED ENVIRONMENT VARIABLES
     ### ==================================================
 
     ### -----------------------------------------------
-    # #### 1. Appwrite Data Base API Configuration
+    # ####1. Appwrite Data Base API Configuration
     ### -----------------------------------------------
-    # #### Get these credentials from your Appwrite project dashboard.
+    # ####Get these credentials from your Appwrite project dashboard.
         NEXT_PUBLIC_ENDPOINT="[Your Appwrite Endpoint URL]"
         PROJECT_ID="[Your Appwrite Project ID]"
         API_KEY="[Your Appwrite API Key]"
@@ -71,7 +71,7 @@ Follow these instructions to get a copy of the project up and running on your lo
         NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
 
     ### -----------------------------------------------
-    # #### 2. AI Model & Search Configuration
+    # ####2. AI Model & Search Configuration
     ### -----------------------------------------------
         # Open API Configuration
             OPENAI_API_KEY="[Your OpenAI API Key]"    
@@ -83,7 +83,7 @@ Follow these instructions to get a copy of the project up and running on your lo
             GROQ_API_KEY="[Your Groq API Key]"
 
     ### -----------------------------------------------
-    # #### 3. Pinecone Index Configuration
+    # ####3. Pinecone Index Configuration
     ### -----------------------------------------------
         # For Document Search (e.g., medical documents)
             PINECONE_DOC_INDEX_NAME="[Pinecone Document Index Name]"
@@ -96,7 +96,7 @@ Follow these instructions to get a copy of the project up and running on your lo
             PINECONE_DB_INDEX_NAME_SPACE="[Pinecone DB Namespace]"
 
     ### -----------------------------------------------
-    # #### 4. Other Configuration
+    # ####4. Other Configuration
     ### -----------------------------------------------
         # Timestamp File for Cron Job Persistence (e.g., a file path)
           LAST_CHECKED_TIMESTAMP_FILE="[Path/to/timestamp_file.txt]"
