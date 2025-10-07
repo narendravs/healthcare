@@ -23,7 +23,7 @@ import {
 
 dotenv.config();
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_APIKEY = process.env.GROQ_API_KEY;
 
 // Define the tools the agent will have access to.
 // You can still add your custom tools here.
@@ -69,7 +69,7 @@ Your mission is to book an appointment. You MUST follow this multi-step process:
 
 // Initialize the Hugging Face LLM using the model and your API key
 const llm = new ChatGroq({
-  apiKey: GROQ_API_KEY,
+  apiKey: GROQ_APIKEY,
   model: "meta-llama/llama-4-scout-17b-16e-instruct", // or 'mixtral-8x7b-instruct'
   temperature: 0,
 });
