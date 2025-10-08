@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     console.log("File name uploaded", file.name);
 
     // Sanitize the filename to make it URL-safe.
-    const sanitizedFilename = sanitizeFilename(file.name);
+    //const sanitizedFilename = sanitizeFilename(file.name);
     // Convert the file Blob to a Buffer to save it to the file system.
     const buffer = Buffer.from(await file.arrayBuffer());
 
