@@ -1,4 +1,4 @@
-//import { Pinecone } from "@pinecone-database/pinecone";
+import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -19,9 +19,9 @@ const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_DOC_INDEX_NAME_SPACE;
 let pinecone: any;
 async function initPinecone() {
   try {
-    // pinecone = new Pinecone({
-    //   apiKey: PINECONE_API_KEY || "",
-    // });
+    pinecone = new Pinecone({
+      apiKey: PINECONE_API_KEY || "",
+    });
     console.log("Pinecone client initialized successfully");
   } catch (error) {
     console.error("Failed to initialize Pinecone client", error);
