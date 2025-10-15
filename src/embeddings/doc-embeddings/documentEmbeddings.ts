@@ -387,8 +387,7 @@ export async function runDocumentProcess(fileName: string) {
   //Initialize services Pinecone and model
   await initPinecone();
   await loadModel();
-  // const documentPath =
-  //   "H://Fullstack%20Apps//react//hospitalmgmt//public//uploads//Medical_Records.pdf";
+
   console.log("Document path is:", fileName);
   const uploadDir = path.join(process.cwd(), "public", "uploads", fileName);
 
@@ -406,9 +405,3 @@ export async function runDocumentProcess(fileName: string) {
     console.error("Error during main execution:", error);
   }
 }
-
-// Replace this with the actual path to your document that needs to be "uploaded".
-// const sourceDocumentPath =
-//   "H:\\Fullstack Apps\\react\\hospitalmgmt\\public\\documents\\Medical_Records.pdf";
-
-// runDocumentProcess(sourceDocumentPath);
