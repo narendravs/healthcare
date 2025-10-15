@@ -2,12 +2,6 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-// Load environment variables for Pinecone configuration.
-// Make sure to create a .env file with these variables.
-// Example .env:
-// PINECONE_API_KEY=YOUR_API_KEY
-// PINECONE_CLOUD=aws
-// PINECONE_REGION=us-east-1
 
 // --- Configuration and Initialization ---
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || "";
