@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "rootDir": "./",
+    "outDir": "../../../dist/embeddings/doc-embeddings",
+    "strict": true,
+    "incremental": true,
+    "tsBuildInfoFile": "../../../dist/embeddings/doc-embeddings/tsconfig.doc.tsbuildinfo",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["**/*"],
+  "exclude": ["node_modules"]
+}
