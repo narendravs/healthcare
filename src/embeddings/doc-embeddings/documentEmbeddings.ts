@@ -352,13 +352,6 @@ async function processAndUpsertChunks(
   }
 }
 
-/**
- * Checks if a file exists at the given path with a retry mechanism.
- * @param filePath The absolute path to the file.
- * @param retries The number of times to retry the check.
- * @param delay The delay in milliseconds between retries.
- * @returns {Promise<boolean>} True if the file exists, false otherwise.
- */
 async function checkFileExists(
   filePath: string,
   retries = 3,
