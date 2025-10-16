@@ -8,15 +8,26 @@ import * as mammoth from "mammoth";
 import { promises as fsPromises } from "fs";
 import pdfParse from "pdf-parse-fixed";
 
+// Load environment variables from a .env file
 dotenv.config();
 
+// --- Configuration ---
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_DOC_INDEX_NAME;
 const PINECONE_INDEX_HOST = process.env.PINECONE_DOC_INDEX_HOST;
 const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_DOC_INDEX_NAME_SPACE;
 
-//Initialize Pinecone
+// --- Global Client and Model States ---
 let pinecone: any;
+/** Global instance of the Transformers.js feature extractor. */
+let extractor: any;
+/** Flag to indicate if the embedding model is loaded and ready. */
+let isModelReady = false;
+
+/**
+ * Initializes the Pinecone client using credentials from environment variables.
+ * It is called once at the start of the ingestion process.
+ */
 async function initPinecone() {
   try {
     pinecone = new Pinecone({
@@ -29,9 +40,10 @@ async function initPinecone() {
   }
 }
 
-let extractor: any;
-let isModelReady = false;
-//Load the Xenova/all-MiniLM-L6-v2 model
+/**
+ * Loads the Transformers.js model (`Xenova/bge-m3`) for embedding generation.
+ * This is an expensive operation and is only performed once.
+ */
 async function loadModel() {
   try {
     console.log("Loading Transformers.js model..");
@@ -44,7 +56,7 @@ async function loadModel() {
 }
 
 /**
- * Interface to define the structured chunk data.
+ * Interface to define the structured chunk data, including its context.
  */
 interface StructuredChunk {
   paragraph: string;
@@ -53,33 +65,12 @@ interface StructuredChunk {
   lineIndex: number;
 }
 
-// Dynamic loader for pdf-parse compatible with both CJS and ESM
-async function loadPdfParse(): Promise<any> {
-  const mod: any = await import("pdf-parse");
-  return typeof mod === "function" ? mod : mod?.default ?? mod;
-}
-
-// async function loadBuffer(file: File): Promise<any> {
-//   const buffer = await Buffer.from(file.arrayBuffer as Buffer);
-//   return buffer;
-// }
-async function uploadFile(
-  sourcePath: File,
-  destinationDir: string
-): Promise<string> {
-  if (!fs.existsSync(destinationDir)) {
-    fs.mkdirSync(destinationDir, { recursive: true });
-  }
-  //const fileName = path.basename(sourcePath);
-  const fileName = sourcePath.name;
-  const destinationPath = path.join(destinationDir, fileName);
-  const bytes = await sourcePath.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  fs.writeFileSync(destinationPath, buffer);
-  console.log(`File uploaded successfully to: ${destinationPath}`);
-  return destinationPath;
-}
-
+/**
+ * Reads and extracts raw text content from various document types.
+ * Supports .txt, .pdf, .doc, and .docx files.
+ * @param {string} filePath - The absolute path to the document.
+ * @returns {Promise<string | undefined>} A promise that resolves to the extracted text, or undefined on failure.
+ */
 async function processDocument(filePath: string): Promise<string | undefined> {
   try {
     console.log(`Reading raw text from: ${filePath}`);
@@ -91,31 +82,6 @@ async function processDocument(filePath: string): Promise<string | undefined> {
         break;
       case ".pdf":
         {
-          // const dataBuffer = fs.readFileSync(filePath);
-          // const pdfParse: any = await loadPdfParse();
-          // const parsed = await pdfParse(dataBuffer);
-          // text = parsed.text;
-          // const dataBuffer = await fsPromises.readFile(filePath);
-          // const PDFExtract = (await import("pdf.js-extract")).PDFExtract;
-          // const pdfExtract = new PDFExtract();
-          // const options = {};
-          // const result = await new Promise((resolve, reject) => {
-          //   pdfExtract.extractBuffer(
-          //     dataBuffer,
-          //     options,
-          //     (err: any, data: any) => {
-          //       if (err) {
-          //         return reject(err);
-          //       }
-          //       resolve(data);
-          //     }
-          //   );
-          // });
-
-          // // Join all text content from the parsed PDF
-          // text = (result as any).pages
-          //   .map((page: any) => page.content.map((c: any) => c.str).join(" "))
-          //   .join("\n");
           const dataBuffer = await fsPromises.readFile(filePath);
           const parsed = await pdfParse(dataBuffer);
           text = parsed.text;
@@ -138,10 +104,22 @@ async function processDocument(filePath: string): Promise<string | undefined> {
   }
 }
 
+/**
+ * Normalizes text by replacing multiple whitespace characters (including newlines) with a single space.
+ * @param {string} text - The input string.
+ * @returns {string} The normalized string.
+ */
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Generates a deterministic, unique ID for a vector based on the file name and content.
+ * This prevents duplicate vectors from being uploaded if the file content hasn't changed.
+ * @param {string} fileName - The name of the source file.
+ * @param {string} text - The line/chunk content.
+ * @returns {string} A SHA1 hash prefixed with 'doc-'.
+ */
 function makeDeterministicId(fileName: string, text: string): string {
   const norm = normalizeText(text);
   const hash = crypto
@@ -151,6 +129,13 @@ function makeDeterministicId(fileName: string, text: string): string {
   return `doc-${hash}`;
 }
 
+/**
+ * A basic chunking strategy that splits text into fixed-size chunks (by character count).
+ * This is used as a fallback when robust paragraph/line splitting is not possible.
+ * @param {string} text - The full document text.
+ * @param {number} [maxChars=800] - The maximum character length for a chunk.
+ * @returns {StructuredChunk[]} An array of fixed-size chunks.
+ */
 function fixedSizeChunker(text: string, maxChars = 800): StructuredChunk[] {
   const chunks: StructuredChunk[] = [];
   const words = normalizeText(text).split(" ");
@@ -194,6 +179,14 @@ function fixedSizeChunker(text: string, maxChars = 800): StructuredChunk[] {
   return chunks;
 }
 
+/**
+ * A robust chunking strategy that first splits by double newlines (paragraphs)
+ * and then splits each paragraph into individual lines.
+ * This is preferred as it preserves semantic context better than fixed-size chunking.
+ * Falls back to `fixedSizeChunker` if no paragraph breaks are detected.
+ * @param {string} [text] - The raw document text.
+ * @returns {StructuredChunk[]} An array of structured chunks.
+ */
 function robustTextSplitter(text?: string): StructuredChunk[] {
   if (!text) return [];
   const chunks: StructuredChunk[] = [];
@@ -219,6 +212,11 @@ function robustTextSplitter(text?: string): StructuredChunk[] {
   return fixedSizeChunker(text);
 }
 
+/**
+ * Orchestrates the text splitting process.
+ * @param {string} [documentText] - The raw text content of the document.
+ * @returns {StructuredChunk[]} The resulting structured chunks.
+ */
 function getChunksFromText(documentText?: string): StructuredChunk[] {
   console.log("Splitting document text into structured chunks...");
   const chunks = robustTextSplitter(documentText);
@@ -226,8 +224,11 @@ function getChunksFromText(documentText?: string): StructuredChunk[] {
   return chunks;
 }
 
-const BATCH_SIZE = 5;
-
+/**
+ * Generates embeddings for an array of text strings using the local Transformers.js model.
+ * @param {string[]} chunks - The array of text strings (lines) to embed.
+ * @returns {Promise<number[][]>} A promise that resolves to an array of embedding vectors.
+ */
 async function getEmbeddingsForChunks(chunks: string[]): Promise<number[][]> {
   if (!isModelReady) {
     console.error("Transformers.js model is not loaded. Please wait...");
@@ -246,34 +247,47 @@ async function getEmbeddingsForChunks(chunks: string[]): Promise<number[][]> {
 }
 
 /**
- * Upserts an array of vectors to a Pinecone index.
- * @param vectors The array of vectors to upsert.
+ * Upserts an array of vectors to the configured Pinecone index and namespace.
+ * Includes fallback logic for individual upserts if the batch upsert fails.
+ * @param {any[]} vectors - The array of vectors (in Pinecone Upsert format) to upsert.
  */
 async function upsertVectorsToPinecone(vectors: any[]) {
-  const ns = pinecone
+  if (!pinecone) {
+    console.error("Pinecone client not initialized.");
+    return;
+  }
+  const vectorNamespace = pinecone
     .Index(PINECONE_INDEX_NAME!, PINECONE_INDEX_HOST!)
     .namespace(PINECONE_INDEX_NAME_SPACE!);
 
   console.log(`Upserting ${vectors.length} vectors to Pinecone...`);
   try {
-    // Newer Pinecone client accepts an array of records directly
-    await ns.upsert(vectors);
+    // Attempt batch upsert (faster)
+    await vectorNamespace.upsert(vectors);
     console.log("Upsert batch successful.");
   } catch (error) {
     console.warn(
       "Batch upsert failed, falling back to per-vector upserts...",
       error
     );
-    for (const v of vectors) {
+    for (const vector of vectors) {
       try {
-        await ns.upsert([v]);
+        await vectorNamespace.upsert([vector]);
       } catch (err) {
-        console.error(`Failed to upsert vector id=${v?.id}`, err);
+        console.error(`Failed to upsert vector id=${vector?.id}`, err);
       }
     }
   }
 }
 
+/** The number of chunks to process and upsert in a single batch. */
+const BATCH_SIZE = 5;
+/**
+ * Processes chunks in batches: generates embeddings and upserts them to Pinecone.
+ * Handles deduplication within the document before processing.
+ * @param {StructuredChunk[]} chunks - The array of structured chunks to process.
+ * @param {string} fileName - The source document file name.
+ */
 async function processAndUpsertChunks(
   chunks: StructuredChunk[],
   fileName: string
@@ -321,6 +335,7 @@ async function processAndUpsertChunks(
         batch = [];
       }
     }
+    // Process remaining final batch
     if (batch.length > 0) {
       console.log(
         `Processing final batch from chunk ${chunkIndex} to ${
@@ -352,6 +367,13 @@ async function processAndUpsertChunks(
   }
 }
 
+/**
+ * Checks if a file exists at the given path with a retry mechanism.
+ * @param {string} filePath - The absolute path to the file.
+ * @param {number} [retries=3] - The number of times to retry the check.
+ * @param {number} [delay=100] - The delay in milliseconds between retries.
+ * @returns {Promise<boolean>} True if the file exists, false otherwise.
+ */
 async function checkFileExists(
   filePath: string,
   retries = 3,
@@ -376,12 +398,19 @@ async function checkFileExists(
   return false;
 }
 
+/**
+ * Main function to execute the full document ingestion pipeline.
+ * 1. Initializes Pinecone and the embedding model.
+ * 2. Reads the document from the upload path.
+ * 3. Chunks the text.
+ * 4. Generates embeddings and upserts to Pinecone in batches.
+ * @param {string} fileName - The name of the file to process (expected in the public/uploads directory).
+ */
 export async function runDocumentProcess(fileName: string) {
-  //Initialize services Pinecone and model
+  // 1. Initialize services Pinecone and model (this is the expensive part)
   await initPinecone();
   await loadModel();
 
-  console.log("Document path is:", fileName);
   const uploadDir = path.join(process.cwd(), "public", "uploads", fileName);
 
   // Check if the file exists before proceeding.
@@ -391,9 +420,19 @@ export async function runDocumentProcess(fileName: string) {
   }
   console.log("Upload directory is:", uploadDir);
   try {
-    //Process the file from the uploaded location
+    //2. Process the file from the uploaded location
     const documentText = await processDocument(uploadDir);
-    console.log("documentTExt is...", documentText);
+    if (documentText) {
+      // 3. Chunk the text
+      const chunks = getChunksFromText(documentText);
+
+      // 4. Generate embeddings and upsert to Pinecone
+      await processAndUpsertChunks(chunks, fileName);
+
+      console.log("Full RAG ingestion pipeline completed successfully.");
+    } else {
+      console.error("Document text extraction failed. Aborting upsert.");
+    }
   } catch (error) {
     console.error("Error during main execution:", error);
   }
