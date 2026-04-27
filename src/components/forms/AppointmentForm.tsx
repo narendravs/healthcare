@@ -40,9 +40,6 @@ const AppointmentForm = ({
   setOpen,
 }: AppointmentFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [appointments, setAppointment] = useState<Appointment | undefined>(
-    undefined
-  );
 
   const router = useRouter();
 
@@ -54,10 +51,10 @@ const AppointmentForm = ({
       primaryPhysician: appointment ? appointment?.primaryPhysician : "",
       schedule: appointment?.schedule
         ? new Date(appointment.schedule)
-        : undefined,
+        : new Date(),
       reason: appointment?.reason ?? "",
       note: appointment?.note ?? "",
-      cancellationReason: appointment?.cancellationReason ?? undefined,
+      cancellationReason: appointment?.cancellationReason ?? "",
     },
   });
 
@@ -80,13 +77,14 @@ const AppointmentForm = ({
       if (type === "create" && patientId) {
         const appointmentData = {
           userId,
-          patient: patientId,
-          primaryPhysician: values.primaryPhysician,
-          schedule: new Date(values.schedule as Date),
-          reason: values.reason!,
-          note: values.note,
+          patient: patientId!,
+          primaryPhysician: values?.primaryPhysician,
+          schedule: new Date(values?.schedule),
+          reason: values?.reason,
+          note: values?.note,
           status: status as Status,
         };
+        alert("appointment data: " + JSON.stringify(appointmentData));
         const newAppointment = await createAppointment(appointmentData);
         if (newAppointment) {
           form.reset();
@@ -100,7 +98,7 @@ const AppointmentForm = ({
           appointmentId: appointment?.$id!,
           appointment: {
             primaryPhysician: values?.primaryPhysician,
-            schedule: new Date(values?.schedule as Date),
+            schedule: new Date(values?.schedule),
             status: status as Status,
             cancellationReason: values?.cancellationReason,
           },

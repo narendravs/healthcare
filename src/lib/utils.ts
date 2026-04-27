@@ -4,27 +4,15 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
 export const parseStringify = (value: any) => {
-  if (value === undefined) return undefined;
+  if (value === undefined) {
+    return {};
+  }
   return JSON.parse(JSON.stringify(value));
 };
 
 export const convertFileToUrl = (file: File) => URL.createObjectURL(file);
 
-export function encryptKey(key: string): string {
-  // Placeholder for encryption logic
-  // In a real application, you would implement actual encryption here
-  return btoa(key); // Base64 encoding as a simple example
-}
-
-export function decryptKey(key: string): string {
-  // Placeholder for decryption logic
-  // In a real application, you would implement actual decryption here
-  return atob(key);
-}
-
-// FORMAT DATE TIME
 export const formatDateTime = (
   dateString: Date | string,
   timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -66,26 +54,29 @@ export const formatDateTime = (
     "en-US",
     dateTimeOptions
   );
-
   const formattedDateDay: string = new Date(dateString).toLocaleString(
     "en-US",
     dateDayOptions
   );
-
   const formattedDate: string = new Date(dateString).toLocaleString(
     "en-US",
     dateOptions
   );
-
   const formattedTime: string = new Date(dateString).toLocaleString(
     "en-US",
     timeOptions
   );
-
   return {
     dateTime: formattedDateTime,
     dateDay: formattedDateDay,
-    dateOnly: formattedDate,
+    date: formattedDate,
     timeOnly: formattedTime,
   };
 };
+export function encryptKey(passkey: string) {
+  return btoa(passkey);
+}
+
+export function decryptKey(passkey: string) {
+  return atob(passkey);
+}

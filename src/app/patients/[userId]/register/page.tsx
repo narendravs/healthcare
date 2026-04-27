@@ -2,16 +2,16 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import RegisterForm from "@/components/forms/RegisterForm";
 import { getPatient, getUser } from "@/lib/actions/patient.actions";
-import { SearchParamProps } from "@/types/index";
 import Link from "next/link";
 
 type PageProps = {
-  params: { [key: string]: string };
+  params: { userId: string };
 };
+
 const Register = async ({ params }: PageProps) => {
-  const userId = params?.userId;
-  const user = await getUser(userId!);
-  const patient = await getPatient(userId!);
+  const { userId } = params;
+  const user = await getUser(userId! as string);
+  const patient = await getPatient(userId! as string);
 
   if (patient) redirect(`/patients/${userId}/new-appointment`);
 

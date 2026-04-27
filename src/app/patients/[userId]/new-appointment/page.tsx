@@ -9,17 +9,32 @@ import { useParams } from "next/navigation";
 
 const Appointment = () => {
   const [open, setOpen] = useState(false);
-  const [patient, setPatient] = useState<Patient>();
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const params = useParams();
   const userId = params?.userId as string;
 
   useEffect(() => {
     const fectchPatient = async () => {
       const patient = await getPatient(userId);
-      if (patient) setPatient(patient);
+      if (patient) {
+        setPatient(patient);
+      } else {
+        setPatient(null);
+      }
+      setIsLoading(false);
     };
     fectchPatient();
   }, [userId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Loading appointment form details...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-row min-h-screen">
       <section className="container flex-1 p-4 ">
@@ -31,6 +46,7 @@ const Appointment = () => {
                 alt="logo"
                 width={200}
                 height={500}
+                priority
                 className="m-5"
               />
             </Link>
@@ -41,12 +57,19 @@ const Appointment = () => {
               <h1 className="font-bold text-black">Go To Home</h1>
             </Link>
           </div>
-          <AppointmentForm
-            patientId={patient?.$id as string}
-            userId={userId}
-            type="create"
-            setOpen={setOpen}
-          />
+          {patient && patient.$id ? (
+            <AppointmentForm
+              patientId={patient.$id}
+              userId={userId}
+              type="create"
+              setOpen={setOpen}
+            />
+          ) : (
+            <div className="header min-h-screen mt-[25%] items-center justify-center">
+              Patient details are not valid, Register Patient first, Click on Go
+              to Home.
+            </div>
+          )}
           <p className="copyright mt-10 py-5">@ 2024 CarePulse</p>
         </div>
       </section>
