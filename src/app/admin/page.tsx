@@ -5,6 +5,7 @@ import { getRecentAppointmentList } from "@/lib/actions/appointment.actions";
 
 import Header from "@/components/Header";
 
+export const dynamic = "force-dynamic";
 const AdminPage = async () => {
   const appointments = await getRecentAppointmentList();
 
