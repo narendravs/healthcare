@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 
@@ -10,9 +12,6 @@ import { Calculator } from "@langchain/community/tools/calculator";
 import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
 
 // This is still needed for your custom actions, but not in this examplecd
-import { createAppointment } from "@/lib/actions/appointment.actions";
-import { getUserByExactName, getPatient } from "@/lib/actions/patient.actions";
-import * as dotenv from "dotenv";
 import { BaseLLMCallOptions } from "@langchain/core/language_models/llms";
 import {
   GetUserByNameTool,
@@ -20,8 +19,6 @@ import {
   CreateAppointmentTool,
   NavigateToAdminTool,
 } from "@/tools/custom-tools";
-
-dotenv.config();
 
 const GROQ_APIKEY = process.env.GROQ_API_KEY;
 
@@ -92,11 +89,11 @@ const agentExecutor = new AgentExecutor({
   // verbose: true, // Add this line
 });
 
-export async function POST(req: NextRequest, res: NextResponse) {
+export async function POST(req: NextRequest) {
   if (req.method !== "POST") {
     return NextResponse.json(
       { message: "Method Not Allowed" },
-      { status: 405 }
+      { status: 405 },
     );
   }
 
@@ -118,7 +115,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
     console.error("Agent execution error:", error);
     return NextResponse.json(
       { error: "Failed to process request." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
