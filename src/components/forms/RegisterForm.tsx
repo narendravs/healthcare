@@ -168,6 +168,8 @@ const RegisterForm = ({ user }: { user: User }) => {
                 control={form.control}
                 name="phone"
                 label="Phone Number"
+                iconSrc="/assets/icons/phone.svg"
+                iconAlt="phone"
                 placeholder="(555) 123-4567"
               />
             </div>
@@ -247,7 +249,7 @@ const RegisterForm = ({ user }: { user: User }) => {
                 name="emergencyContactNumber"
                 label="Emergency contact number"
                 placeholder="(555) 123-4567"
-                iconSrc="/assets/icons/email.svg"
+                iconSrc="/assets/icons/phone.svg"
                 iconAlt="emergency number"
               />
             </div>
@@ -389,7 +391,7 @@ const RegisterForm = ({ user }: { user: User }) => {
             />
           </section>
           <div className="flex justify-center cursor-pointer">
-            <SubmitButton isLoading={isLoading}>
+            <SubmitButton isLoading={isLoading} className="flex">
               Submit and Continue
             </SubmitButton>
           </div>
