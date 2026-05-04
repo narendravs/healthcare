@@ -1,15 +1,14 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-
+  const nextConfig: NextConfig = {
   // Uses Rust-based compiler for these heavy packages
   transpilePackages: ["@langchain/community", "@langchain/core", "mammoth"],
-  
+
   experimental: {
     // 1. Enable the new React Compiler for better runtime
     // Improves runtime by reducing re-renders during heavy tasks (like uploads)
     reactCompiler: true,
-    
+
     // 2. Tree-shaking for your AI and UI libraries
     optimizePackageImports: [
       "@radix-ui/react-alert-dialog",
