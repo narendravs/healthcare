@@ -78,7 +78,7 @@ const RenderInput = ({ field, props }: { field: any; props: CustomProps }) => {
           <Textarea
             {...field}
             placeholder={props.placeholder}
-            className="shad-textArea "
+            className="shad-textArea"
             disabled={props.disabled}
           />
         </FormControl>
