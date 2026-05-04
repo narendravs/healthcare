@@ -48,7 +48,7 @@ const HomeContent = () => {
               width={200}
               height={40}
               alt="patient"
-              className="h-auto w-full"
+              className="h-auto w-auto"
             />
             <span className="font-bold text-2xl  sm:block hidden ">
               Hospital Management System
