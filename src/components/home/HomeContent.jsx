@@ -46,7 +46,7 @@ const HomeContent = () => {
             <Image
               src={"/assets/icons/logo-full.svg"}
               width={200}
-              height={500}
+              height={40}
               alt="patient"
               className=""
             />
@@ -113,7 +113,7 @@ const HomeContent = () => {
             </DropdownMenuContent>
           </DropdownMenu>
           <span>
-            <h1 className="text-1xl text-black font-bold sm:block hidden md:block">
+            <h1 className="text-1xl text-black font-bold hidden md:block">
               Select the mode
             </h1>
           </span>
