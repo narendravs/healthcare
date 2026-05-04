@@ -92,7 +92,7 @@ const RenderInput = ({ field, props }: { field: any; props: CustomProps }) => {
               alt={props.iconAlt || "icon"}
               width={24}
               height={24}
-              className="ml-2"
+              className="ml-2 opacity-5"
               priority
             />
           )}
@@ -144,8 +144,8 @@ const RenderInput = ({ field, props }: { field: any; props: CustomProps }) => {
                       ? field.onChange([...(field.value || []), option.value])
                       : field.onChange(
                           field.value?.filter(
-                            (value: string) => value !== option.value
-                          )
+                            (value: string) => value !== option.value,
+                          ),
                         );
                   }}
                   disabled={field.disabled}
