@@ -48,7 +48,7 @@ const HomeContent = () => {
               width={200}
               height={40}
               alt="patient"
-              className=""
+              className="h-auto w-full"
             />
             <span className="font-bold text-2xl  sm:block hidden ">
               Hospital Management System
@@ -84,7 +84,7 @@ const HomeContent = () => {
           height={1000}
           width={1000}
           alt="patient"
-          className="side-img max-w-[100%] min-h-screen object-cover flex-1"
+          className="side-img max-w-[100%] min-h-screen w-auto object-cover flex-1"
         />
         <div className="top-0 right-0 absolute mr-[3px] mt-[3px] p-5 ">
           <DropdownMenu>
