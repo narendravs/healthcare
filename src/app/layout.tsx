@@ -1,5 +1,5 @@
-import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import  "./globals.css";
 
 export default function RootLayout({
   children,
@@ -7,11 +7,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/globe.svg" />
-        <link href="https://cdn.tailwindcss.com" rel="stylesheet"></link>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Hospital Management System</title>
         <meta
