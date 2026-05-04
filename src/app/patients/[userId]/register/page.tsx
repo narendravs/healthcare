@@ -5,15 +5,22 @@ import { getPatient, getUser } from "@/lib/actions/patient.actions";
 import Link from "next/link";
 
 type PageProps = {
-  params: { userId: string };
+  params: Promise<{ userId: string }>; // Params is a Promise in newer Next.js
 };
 
 const Register = async ({ params }: PageProps) => {
-  const { userId } = params;
+  const { userId } = await params;
+
+  if (!userId) {
+    redirect("/"); // Safety redirect if no ID is found
+  }
+
   const user = await getUser(userId! as string);
   const patient = await getPatient(userId! as string);
 
-  if (patient) redirect(`/patients/${userId}/new-appointment`);
+  if (patient && patient.documents && patient.documents.length > 0) {
+    redirect(`/patients/${userId}/new-appointment`);
+  }
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full h-full">
