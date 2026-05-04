@@ -1,5 +1,22 @@
-.env
-.next/
-dist/
-node_modules/
-src/embeddings/public/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/dist
+/src/embeddings/public/
+/node_modules
+
+# next.js
+/.next/
+
+# production
+/build
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
