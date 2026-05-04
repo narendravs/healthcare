@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserFormValidation } from "@/lib/validation";
 import { Form, FormField } from "@/components/ui/form";
-import { createUser } from "@/lib/actions/patient.actions";
+import { createUser,getUserByExactName } from "@/lib/actions/patient.actions";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
 // import * as Sentry from "@sentry/nextjs"; //testing the api request latancy
@@ -36,13 +36,16 @@ const PatientForm = () => {
       // const transaction = Sentry.startInactiveSpan({
       //   name: "Create user to register the patient details.",
       // });
-      const user = await createUser({
+      const user = await getUserByExactName(data.name);
+      if (!user) {
+        const user = await createUser({
         email: data.email,
         phone: data.phone,
         name: data.name,
       });
-      if (user) {
         router.push(`/patients/${user.$id}/register`);
+      } else {
+        router.push(`/patients/${user.$id}/new-appointment`);
       }
       // transaction.end();
     } catch (error) {
@@ -98,7 +101,7 @@ const PatientForm = () => {
           <div className="ml-8">
             <SubmitButton
               isLoading={isLoading}
-              className="w-[calc(100%-0.5rem)] ml-2"
+              className="w-full"
             >
               Get Started
             </SubmitButton>
