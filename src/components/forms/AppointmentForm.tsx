@@ -131,7 +131,8 @@ const AppointmentForm = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 flex flex-col items-center justify-center xl:items-start">
+        <div className="flex flex-col w-full space-y-10 xl:items-start justify-center items-center ">
         {type === "create" && (
           <section className="mb-8 space-y-4">
             <h1 className="header">Create Appointment</h1>
@@ -140,7 +141,7 @@ const AppointmentForm = ({
             </p>
           </section>
         )}
-
+        
         {type !== "cancel" && (
           <>
             <CustomFormField
@@ -207,12 +208,13 @@ const AppointmentForm = ({
             label="Reason for cancellation"
             placeholder="Urgent meeting came up"
           />
-        )}
+          )}
+          </div>
         <SubmitButton
           isLoading={isLoading}
           className={`${
             type === "cancel" ? "shad-danger-btn" : "shad-primary-btn"
-          } w-full mt-20 sm:w-[300px]`}
+          } w-fit mt-20 p-5`}
         >
           {buttonLabel}
         </SubmitButton>
