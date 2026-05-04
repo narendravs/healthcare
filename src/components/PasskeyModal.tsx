@@ -34,7 +34,7 @@ const PasskeyModal = () => {
 
   useEffect(() => {
     const encryptedKey = localStorage.getItem("accessKey");
-    if (!isClient) return; // Only run this effect on the client
+    if (!isClient) return; 
     const accessKey = encryptedKey && decryptKey(encryptedKey);
     console.log("Decrypted Access Key:", accessKey);
 
