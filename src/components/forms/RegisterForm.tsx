@@ -135,7 +135,7 @@ const RegisterForm = ({ user }: { user: User }) => {
   return (
     <Form {...form}>
       <form className=" space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-col border-1 rounded-lg h-[500] overflow-y-auto p-5 gap-4">
+        <div className="flex flex-col border-1 rounded-lg  overflow-y-auto p-5 gap-4">
           <section className="space-y-6 sm:w-full sm:justify-center border-1 rounded-lg p-5 overflow-y-auto overflow-x-hidden flex-1">
             <div className="mb-2 space-y-1">
               <h2 className="sub-header">Personal Information</h2>
