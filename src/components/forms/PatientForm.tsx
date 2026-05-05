@@ -60,6 +60,7 @@ const PatientForm = () => {
 
   return (
     <Form {...form}>
+      
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="container flex flex-col space-y-4 border-2 rounded-bl-lg rounded-br-lg bg-white-500 w-full p-10"
@@ -68,7 +69,7 @@ const PatientForm = () => {
           <h1 className="header">Create Patient</h1>
           <p className="text-dark-700">Get started with appointments.</p>
         </section>
-        <div className="flex flex-col w-full gap-5 ">
+        <div className="flex flex-col w-full gap-5">
           <CustomFormField
             fieldType={FormFieldType.INPUT}
             control={form.control}
@@ -107,7 +108,8 @@ const PatientForm = () => {
             </SubmitButton>
           </div>
         </div>
-      </form>
+        </form>
+        
     </Form>
   );
 };
