@@ -40,7 +40,7 @@ const HomeContent = () => {
   return (
     <div className="flex flex-row min-h-screen  ">
       {isAdmin && <PasskeyModal />}
-      <section className="remove-scrollbar container ">
+      <section className="remove-scrollbar container w-full">
         <div className="flex flex-col gap-0 ml-0 flex-1">
           <div className="flex flex-row items-center gap-5 bg-blue-300 p-4 rounded-1 w-full">
             <Image
