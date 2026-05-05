@@ -80,7 +80,7 @@ const AppointmentForm = ({
           note: values?.note,
           status: status as Status,
         };
-        alert("appointment data: " + JSON.stringify(appointmentData));
+        //alert("appointment data: " + JSON.stringify(appointmentData));
         const newAppointment = await createAppointment(appointmentData);
         if (newAppointment) {
           form.reset();
