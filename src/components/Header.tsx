@@ -23,9 +23,7 @@ const Header = () => {
       });
       if (res.ok) {
         //Find the input value by its Id and reset its value to empty, to get rid of the selected file
-        const fileInput = document.getElementById(
-          "file-input"
-        ) as HTMLInputElement;
+        const fileInput = document.getElementById("file-input") as HTMLInputElement;
         if (fileInput) {
           fileInput.value = "";
         }
@@ -66,7 +64,7 @@ const Header = () => {
           // className="h-8 w-fit"
         />
       </Link>
-      <div className="flex flex-row items-center justify-content-center gap-2">
+      <div className="justify-content-center hidden sm:flex flex-row items-center gap-2">
         <input
           id="file-input"
           type="file"
@@ -76,18 +74,18 @@ const Header = () => {
         />
         <label
           htmlFor="file-input"
-          className="inline-flex items-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:bg-slate-100 cursor-pointer"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:bg-slate-100"
         >
           <Upload className="h-4 w-4" />
           Choose file
         </label>
-        <span className="text-sm text-slate-600 truncate max-w-[25%]">
+        <span className="max-w-[25%] truncate text-sm text-slate-600">
           {selectedFile ? selectedFile.name : "No file chosen"}
         </span>
         <Button
           onClick={handleUploadFile}
           disabled={!selectedFile}
-          className="ml-2 whitespace-nowrap cursor-pointer"
+          className="ml-2 cursor-pointer whitespace-nowrap"
         >
           Upload File
         </Button>

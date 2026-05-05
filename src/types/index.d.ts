@@ -51,3 +51,8 @@ declare type UpdateAppointmentParams = {
   type: string;
   timeZone: string;
 };
+
+declare type ConsentOption = {
+  label: string;
+  value: string;
+};

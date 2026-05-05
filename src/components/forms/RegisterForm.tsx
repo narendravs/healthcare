@@ -135,7 +135,7 @@ const RegisterForm = ({ user }: { user: User }) => {
   return (
     <Form {...form}>
       <form className=" space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-col border-1 rounded-lg h-[500] overflow-y-auto p-5 gap-4">
+        <div className="flex flex-col border-1 rounded-lg  overflow-y-auto p-5 gap-4">
           <section className="space-y-6 sm:w-full sm:justify-center border-1 rounded-lg p-5 overflow-y-auto overflow-x-hidden flex-1">
             <div className="mb-2 space-y-1">
               <h2 className="sub-header">Personal Information</h2>
@@ -168,6 +168,8 @@ const RegisterForm = ({ user }: { user: User }) => {
                 control={form.control}
                 name="phone"
                 label="Phone Number"
+                iconSrc="/assets/icons/phone.svg"
+                iconAlt="phone"
                 placeholder="(555) 123-4567"
               />
             </div>
@@ -247,7 +249,7 @@ const RegisterForm = ({ user }: { user: User }) => {
                 name="emergencyContactNumber"
                 label="Emergency contact number"
                 placeholder="(555) 123-4567"
-                iconSrc="/assets/icons/email.svg"
+                iconSrc="/assets/icons/phone.svg"
                 iconAlt="emergency number"
               />
             </div>
@@ -271,7 +273,6 @@ const RegisterForm = ({ user }: { user: User }) => {
                       alt={doctor.name}
                       width={30}
                       height={30}
-                      fill
                       className="rounded-full border border-dark-500 h-8"
                     />
                     <p>{doctor.name}</p>
@@ -390,7 +391,7 @@ const RegisterForm = ({ user }: { user: User }) => {
             />
           </section>
           <div className="flex justify-center cursor-pointer">
-            <SubmitButton isLoading={isLoading}>
+            <SubmitButton isLoading={isLoading} className="flex">
               Submit and Continue
             </SubmitButton>
           </div>

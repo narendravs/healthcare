@@ -212,7 +212,7 @@ button {
 .shad-primary-btn {
   background-color: #22c55e; /* bg-green-500 */
   color: #fff; /* text-white */
-  width: 290px;
+  width: 350px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -378,7 +378,8 @@ input:disabled + .checkbox-label,
   padding-right: 5%;
   padding-top: 1.25rem; /* py-5 = 1.25rem top and bottom */
   padding-bottom: 1.25rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
 }
 
@@ -404,7 +405,8 @@ input:disabled + .checkbox-label,
   overflow: hidden;
   border-radius: 0.5rem; /* 8px */
   border: 1px solid #4a5568; /* Assuming a dark gray for dark-400 */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 .shad-table {
@@ -429,7 +431,8 @@ input:disabled + .checkbox-label,
   border-radius: 1rem; /* Equivalent to Tailwind's rounded-2xl (16px) */
   background-size: cover; /* Equivalent to Tailwind's bg-cover */
   padding: 1.5rem; /* Equivalent to Tailwind's p-6 (1.5 * 16px = 24px) */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Equivalent to Tailwind's shadow-lg */
 }
 .shad-dialog {
@@ -507,8 +510,32 @@ input:disabled + .checkbox-label,
   padding-bottom: 3rem; /* pb-12 = 3rem */
 }
 
+@media (max-width: 640px){
+ /* 1. Target the containers to center items */
+  form, .flex-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centers the 85% width items */
+    width: 100%;
+  }
+
+  /* 2. Force textarea and button to match the input width */
+  .shad-input,
+  .shad-textArea,
+  .shad-primary-btn,
+  .shad-danger-btn {
+    width: 85% !important; /* Use percentage so it works at 488px AND 320px */
+    min-width: 280px;      /* Prevents it from getting too skinny on tiny phones */
+    max-width: 350px;      /* Prevents it from getting too wide on tablets */
+    margin: 0 auto;        /* Standard centering */
+  }
+}
+
 @media (min-width: 640px) {
-  /* sm: */
+   /* sm: */
+  .shad-primary-btn {
+    width: 340px;
+  }
   .shad-textArea {
     width: 350px;
   }
@@ -551,6 +578,10 @@ input:disabled + .checkbox-label,
   }
 }
 @media (min-width: 768px) {
+
+   .shad-primary-btn {
+    width: 340px; /* Optional: intermediate width */
+  }
   .shad-textArea {
     width: 350px;
   } /* md:block */
@@ -563,9 +594,9 @@ input:disabled + .checkbox-label,
   }
 }
 @media (max-width: 768px) {
+   
   .shad-primary-btn {
-    /* margin-left: 30px; */
-    width: 90%;
+    width: 340px; 
   }
   .rdp-spacing .rdp-day,
   .rdp-spacing .rdp-nav_button {
@@ -585,13 +616,12 @@ input:disabled + .checkbox-label,
     line-height: 1; /* md:leading-none */
   }
   .shad-input {
-    background-color: #eef0f3; /* bg-dark-400 */
-    color: black; /* text color (optional, adjust as needed) */
-    height: 1.75rem; /* h-11 */
+    background-color: #eef0f3; 
+    color: black; 
+    height: 1.75rem; 
     border-radius: 5px;
     width: 85%;
-    padding: 5px;
-    /* margin: 5px; */
+    padding: 5px;   
   }
 
   .side-img {

@@ -3,10 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 // Import necessary libraries.
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
-import * as dotenv from "dotenv";
-
-// Load environment variables.
-dotenv.config();
 
 // Configure your Pinecone index and namespace.
 // --- Configuration ---

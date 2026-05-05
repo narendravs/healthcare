@@ -1,66 +1,52 @@
-"use client";
-import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { getPatient } from "@/lib/actions/patient.actions";
-import Image from "next/image";
-import AppointmentForm from "@/components/forms/AppointmentForm";
-import { Patient } from "@/types/appwrite.types";
-import { useParams } from "next/navigation";
+import AppointmentClientWrapper from "@/components/appointment/AppointmentClientWrapper";
 
-const Appointment = () => {
-  const [open, setOpen] = useState(false);
-  const [patient, setPatient] = useState<Patient>();
-  const params = useParams();
-  const userId = params?.userId as string;
+const AppointmentPage = async ({ params }: { params: { userId: string } }) => {
+  const { userId } = params;
 
-  useEffect(() => {
-    const fectchPatient = async () => {
-      const patient = await getPatient(userId);
-      if (patient) setPatient(patient);
-    };
-    fectchPatient();
-  }, [userId]);
+  // Fetch data directly on the server
+  const patient = await getPatient(userId);
+
   return (
-    <div className="flex flex-row min-h-screen">
-      <section className="container flex-1 p-4 ">
-        <div className="mx-1 flex flex-col size-full flex-1 max-w-full min-h-screen border-1 rounded-lg p-5 overflow-y-auto overflow-x-hidden">
-          <div className="flex flex-row items-center justify-between  text-blue-500 bg-blue-300 rounded-bl-lg rounded-br-lg">
+    <div className="flex min-h-screen flex-row">
+      <section className="container flex-1 p-4">
+        <div className="border-1 mx-1 flex size-full min-h-screen max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-lg p-5">
+          <div className="flex w-full flex-row items-center justify-between rounded-bl-lg rounded-br-lg bg-blue-300 text-blue-500">
             <Link href="/">
               <Image
                 src="/assets/icons/logo-full.svg"
                 alt="logo"
                 width={200}
-                height={500}
+                height={50} // Fixed height: 500 was likely stretching it!
+                priority
                 className="m-5"
               />
             </Link>
-            <Link
-              href="/"
-              className="items-center justify-end mr-5 sm:block hidden"
-            >
+            <Link href="/" className="mr-5 hidden items-center justify-end sm:block">
               <h1 className="font-bold text-black">Go To Home</h1>
             </Link>
           </div>
-          <AppointmentForm
-            patientId={patient?.$id as string}
-            userId={userId}
-            type="create"
-            setOpen={setOpen}
-          />
+
+          {/* Pass the server-fetched data to the Client Wrapper */}
+          <AppointmentClientWrapper patient={patient} userId={userId} />
+
           <p className="copyright mt-10 py-5">@ 2024 CarePulse</p>
         </div>
       </section>
+
       <div className="hidden md:flex md:flex-shrink-0">
         <Image
           src="/assets/images/appointment-img.png"
-          height={1500}
-          width={1500}
+          height={1000}
+          width={1000}
           alt="appointment"
-          className="h-full object-cover max-w-[390px] w-full"
+          className="h-full w-full max-w-[390px] object-cover"
         />
       </div>
     </div>
   );
 };
 
-export default Appointment;
+export default AppointmentPage;

@@ -11,7 +11,7 @@ const SubmitButton = ({ isLoading, className, children }: ButtonProps) => {
   return (
     <Button
       type="submit"
-      className={className ?? "shad-primary-btn xl:w-[390px]"}
+      className={className ? "shad-primary-btn" : ""}
       disabled={isLoading}
     >
       {isLoading ? (

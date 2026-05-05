@@ -34,7 +34,7 @@ const PasskeyModal = () => {
 
   useEffect(() => {
     const encryptedKey = localStorage.getItem("accessKey");
-    if (!isClient) return; // Only run this effect on the client
+    if (!isClient) return; 
     const accessKey = encryptedKey && decryptKey(encryptedKey);
     console.log("Decrypted Access Key:", accessKey);
 
@@ -49,22 +49,7 @@ const PasskeyModal = () => {
     }
   }, [isClient, path, router]); // Dependency on isClient, path, and router
 
-  // const encryptedKey =
-  //   typeof window !== "undefined"
-  //     ? window.localStorage.getItem("accessKey")
-  //     : null;
-
-  // useEffect(() => {
-  //   const accessKey = encryptedKey && decryptKey(encryptedKey);
-  //   if (path)
-  //     if (accessKey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY!.toString()) {
-  //       setIsOpen(false);
-  //       router.push("/admin");
-  //     } else {
-  //       setIsOpen(true);
-  //     }
-  // }, [encryptedKey]);
-
+  
   const closeModal = () => {
     setIsOpen(false);
     router.push("/");

@@ -5,14 +5,15 @@ import { getRecentAppointmentList } from "@/lib/actions/appointment.actions";
 
 import Header from "@/components/Header";
 
+export const dynamic = "force-dynamic";
 const AdminPage = async () => {
   const appointments = await getRecentAppointmentList();
 
   return (
-    <div className="mx-auto flex flex-col space-y-14 min-w-full  ">
+    <div className="container mx-auto flex min-w-full flex-col space-y-14">
       <Header />
 
-      <main className="admin-main">
+      <main className="admin-main container">
         <section className="w-full space-y-4">
           <h1 className="header">Welcome To Admin Dashboard</h1>
         </section>

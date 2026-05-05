@@ -1,0 +1,23 @@
+# Standard ignores
+node_modules
+.next
+dist
+build
+out
+public
+
+# Logs and environment
+*.log
+.env*
+
+# IDE and System files
+.vscode
+.idea
+.DS_Store
+
+# AI & Data Processing (Crucial for your stack)
+# Ignore the model cache if you download HuggingFace models locally
+.cache
+
+# TypeScript build info
+*.tsbuildinfo

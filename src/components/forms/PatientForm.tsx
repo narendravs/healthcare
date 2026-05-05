@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserFormValidation } from "@/lib/validation";
 import { Form, FormField } from "@/components/ui/form";
-import { createUser } from "@/lib/actions/patient.actions";
+import { createUser,getUserByExactName } from "@/lib/actions/patient.actions";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
 // import * as Sentry from "@sentry/nextjs"; //testing the api request latancy
@@ -36,13 +36,16 @@ const PatientForm = () => {
       // const transaction = Sentry.startInactiveSpan({
       //   name: "Create user to register the patient details.",
       // });
-      const user = await createUser({
+      const user = await getUserByExactName(data.name);
+      if (!user) {
+        const user = await createUser({
         email: data.email,
         phone: data.phone,
         name: data.name,
       });
-      if (user) {
         router.push(`/patients/${user.$id}/register`);
+      } else {
+        router.push(`/patients/${user.$id}/new-appointment`);
       }
       // transaction.end();
     } catch (error) {
@@ -57,47 +60,56 @@ const PatientForm = () => {
 
   return (
     <Form {...form}>
+      
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="container flex flex-col space-y-4 border-1 rounded-bl-lg rounded-br-lg bg-white-500 w-full space-x-4 p-10"
+        className="container flex flex-col space-y-4 border-2 rounded-bl-lg rounded-br-lg bg-white-500 w-full p-10"
       >
         <section className="mb-12 space-y-4">
           <h1 className="header">Create Patient</h1>
           <p className="text-dark-700">Get started with appointments.</p>
         </section>
+        <div className="flex flex-col w-full gap-3">
+          <CustomFormField
+            fieldType={FormFieldType.INPUT}
+            control={form.control}
+            name="name"
+            label="Full name"
+            placeholder="John Doe"
+            iconSrc="/assets/icons/user.svg"
+            iconAlt="user"
+          />
 
-        <CustomFormField
-          fieldType={FormFieldType.INPUT}
-          control={form.control}
-          name="name"
-          label="Full name"
-          placeholder="John Doe"
-          iconSrc="/assets/icons/user.svg"
-          iconAlt="user"
-        />
+          <CustomFormField
+            fieldType={FormFieldType.INPUT}
+            control={form.control}
+            name="email"
+            label="Email"
+            placeholder="johndoe@gmail.com"
+            iconSrc="/assets/icons/email.svg"
+            iconAlt="email"
+          />
 
-        <CustomFormField
-          fieldType={FormFieldType.INPUT}
-          control={form.control}
-          name="email"
-          label="Email"
-          placeholder="johndoe@gmail.com"
-          iconSrc="/assets/icons/email.svg"
-          iconAlt="email"
-        />
-
-        <CustomFormField
-          fieldType={FormFieldType.PHONE_INPUT}
-          control={form.control}
-          name="phone"
-          label="Phone number"
-          iconSrc="/assets/icons/user.svg"
-          placeholder="(555) 123-4567"
-        />
-        <div className="flex  sm:ml-[10px] xl:ml-[30px]">
-          <SubmitButton isLoading={isLoading}>Get Started</SubmitButton>
+          <CustomFormField
+            fieldType={FormFieldType.PHONE_INPUT}
+            control={form.control}
+            name="phone"
+            label="Phone number"
+            iconSrc="/assets/icons/phone.svg"
+            iconAlt="phone"
+            placeholder="(555) 123-4567"
+          />
+          <div className="ml-8 mt-5">
+            <SubmitButton
+              isLoading={isLoading}
+              className="w-full"
+            >
+              Get Started
+            </SubmitButton>
+          </div>
         </div>
-      </form>
+        </form>
+        
     </Form>
   );
 };

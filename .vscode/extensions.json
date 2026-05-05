@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "christian-kohler.path-intellisense",
+    "arcanis.vscode-zipfs",
+    /* Add these for better AI/TypeScript performance */
+    "yoavbls.pretty-ts-errors", 
+    "editorconfig.editorconfig"
+  ]
+}
