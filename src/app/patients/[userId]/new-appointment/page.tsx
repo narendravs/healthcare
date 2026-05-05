@@ -29,17 +29,17 @@ const Appointment = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <p>Loading appointment form details...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-row min-h-screen">
-      <section className="container flex-1 p-4 ">
-        <div className="mx-1 flex flex-col size-full flex-1 max-w-full min-h-screen border-1 rounded-lg p-5 overflow-y-auto overflow-x-hidden">
-          <div className="flex flex-row items-center justify-between  text-blue-500 bg-blue-300 rounded-bl-lg rounded-br-lg">
+    <div className="flex min-h-screen flex-row">
+      <section className="container flex-1 p-4">
+        <div className="border-1 mx-1 flex size-full min-h-screen max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-lg p-5">
+          <div className="flex w-full flex-row items-center justify-between rounded-bl-lg rounded-br-lg bg-blue-300 text-blue-500">
             <Link href="/">
               <Image
                 src="/assets/icons/logo-full.svg"
@@ -50,10 +50,7 @@ const Appointment = () => {
                 className="m-5"
               />
             </Link>
-            <Link
-              href="/"
-              className="items-center justify-end mr-5 sm:block hidden"
-            >
+            <Link href="/" className="mr-5 hidden items-center justify-end sm:block">
               <h1 className="font-bold text-black">Go To Home</h1>
             </Link>
           </div>
@@ -65,9 +62,8 @@ const Appointment = () => {
               setOpen={setOpen}
             />
           ) : (
-            <div className="header min-h-screen mt-[25%] items-center justify-center">
-              Patient details are not valid, Register Patient first, Click on Go
-              to Home.
+            <div className="header mt-[25%] min-h-screen items-center justify-center">
+              Patient details are not valid, Register Patient first, Click on Go to Home.
             </div>
           )}
           <p className="copyright mt-10 py-5">@ 2024 CarePulse</p>
@@ -79,7 +75,7 @@ const Appointment = () => {
           height={1500}
           width={1500}
           alt="appointment"
-          className="h-full object-cover max-w-[390px] w-full"
+          className="h-full w-full max-w-[390px] object-cover"
         />
       </div>
     </div>
