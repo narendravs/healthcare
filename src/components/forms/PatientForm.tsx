@@ -69,7 +69,7 @@ const PatientForm = () => {
           <h1 className="header">Create Patient</h1>
           <p className="text-dark-700">Get started with appointments.</p>
         </section>
-        <div className="flex flex-col w-full gap-5">
+        <div className="flex flex-col w-full gap-3">
           <CustomFormField
             fieldType={FormFieldType.INPUT}
             control={form.control}
@@ -99,7 +99,7 @@ const PatientForm = () => {
             iconAlt="phone"
             placeholder="(555) 123-4567"
           />
-          <div className="ml-8">
+          <div className="ml-8 mt-5">
             <SubmitButton
               isLoading={isLoading}
               className="w-full"

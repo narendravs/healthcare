@@ -38,10 +38,10 @@ const HomeContent = () => {
   };
 
   return (
-    <div className="flex flex-row min-h-screen  ">
+    <div className="flex flex-row min-h-screen">
       {isAdmin && <PasskeyModal />}
       <section className="remove-scrollbar container w-full">
-        <div className="flex flex-col gap-0 ml-0 flex-1">
+        <div className="flex flex-col gap-0 ml-0 ">
           <div className="flex flex-row items-center gap-5 bg-blue-300 p-4 rounded-1 w-full">
             <Image
               src={"/assets/icons/logo-full.svg"}
@@ -50,7 +50,7 @@ const HomeContent = () => {
               alt="patient"
               className="h-auto w-auto"
             />
-            <span className="font-bold text-2xl  sm:block hidden ">
+            <span className="font-bold text-2xl sm:block hidden ">
               Hospital Management System
             </span>
           </div>
