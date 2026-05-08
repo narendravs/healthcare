@@ -80,7 +80,6 @@ const HomeContent = () => {
           width={1000}
           alt="patient"
           className="side-img min-h-screen w-auto flex-1 object-cover"
-          // className="side-img object-cover"
           priority
         />
         <div className="absolute right-0 top-0 mr-[3px] mt-[3px] p-5">
