@@ -34,7 +34,7 @@ const PasskeyModal = () => {
 
   useEffect(() => {
     const encryptedKey = localStorage.getItem("accessKey");
-    if (!isClient) return; 
+    if (!isClient) return;
     const accessKey = encryptedKey && decryptKey(encryptedKey);
     console.log("Decrypted Access Key:", accessKey);
 
@@ -49,21 +49,19 @@ const PasskeyModal = () => {
     }
   }, [isClient, path, router]); // Dependency on isClient, path, and router
 
-  
   const closeModal = () => {
     setIsOpen(false);
     router.push("/");
   };
 
-  const validatePasskey = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
+  const validatePasskey = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
 
     if (passkey === process.env.NEXT_PUBLIC_ADMIN_PASSKEY) {
       const encryptedKey = encryptKey(passkey);
       localStorage.setItem("accessKey", encryptedKey);
       setIsOpen(false);
+      router.push("/admin");
     } else {
       setError("Invalid passkey. Please try again.");
     }
@@ -73,7 +71,7 @@ const PasskeyModal = () => {
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent className="shad-alert-dialog">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center justify-content-between">
+          <AlertDialogTitle className="justify-content-between flex items-center">
             Admin Access Verifiction
             <Image
               src="/assets/icons/close.svg"
@@ -89,11 +87,7 @@ const PasskeyModal = () => {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div>
-          <InputOTP
-            maxLength={6}
-            value={passkey}
-            onChange={(value) => setPassKey(value)}
-          >
+          <InputOTP maxLength={6} value={passkey} onChange={(value) => setPassKey(value)}>
             <InputOTPGroup className="shad-otp">
               <InputOTPSlot className="shad-otp-slot" index={0} />
               <InputOTPSlot className="shad-otp-slot" index={1} />
@@ -103,11 +97,7 @@ const PasskeyModal = () => {
               <InputOTPSlot className="shad-otp-slot" index={5} />
             </InputOTPGroup>
           </InputOTP>
-          {error && (
-            <p className="shad-error text-14-regular mt-4 flex justify-center">
-              {error}
-            </p>
-          )}
+          {error && <p className="shad-error text-14-regular mt-4 flex justify-center">{error}</p>}
         </div>
         <AlertDialogFooter>
           <AlertDialogAction
