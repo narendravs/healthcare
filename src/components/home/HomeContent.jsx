@@ -38,11 +38,11 @@ const HomeContent = () => {
   };
 
   return (
-    <div className="flex flex-row min-h-screen">
+    <div className="flex min-h-screen flex-row">
       {isAdmin && <PasskeyModal />}
       <section className="remove-scrollbar container w-full">
-        <div className="flex flex-col gap-0 ml-0 ">
-          <div className="flex flex-row items-center gap-5 bg-blue-300 p-4 rounded-1 w-full">
+        <div className="ml-0 flex flex-col gap-0">
+          <div className="rounded-1 flex w-full flex-row items-center gap-5 bg-blue-300 p-4">
             <Image
               src={"/assets/icons/logo-full.svg"}
               width={200}
@@ -50,17 +50,12 @@ const HomeContent = () => {
               alt="patient"
               className="h-auto w-auto"
             />
-            <span className="font-bold text-2xl sm:block hidden ">
-              Hospital Management System
-            </span>
+            <span className="hidden text-2xl font-bold sm:block">Hospital Management System</span>
           </div>
           <PatientForm />
-          <div className="text-14-regular mt-10 flex flex-row px-2 justify-between">
-            <p className="text-dark-600 xl:text-left ">© 2024 CarePluse</p>
-            <Button
-              onClick={openChat}
-              className="flex flex-col items-center justify-center gap-2"
-            >
+          <div className="text-14-regular mt-10 flex flex-row justify-between px-2">
+            <p className="text-dark-600 xl:text-left">© 2024 CarePluse</p>
+            <Button onClick={openChat} className="flex flex-col items-center justify-center gap-2">
               <p className="text-small">
                 Hey! chat with me about patient detais and appointments ?
               </p>
@@ -69,7 +64,7 @@ const HomeContent = () => {
                 alt="chat box"
                 width={30}
                 height={30}
-                className="cursor-pointer ml-[50%] mt-2"
+                className="ml-[50%] mt-2 cursor-pointer"
               />
             </Button>
             <Link href="/?admin=true" className="text-green-500">
@@ -84,9 +79,10 @@ const HomeContent = () => {
           height={1000}
           width={1000}
           alt="patient"
-          className="side-img max-w-[100%] min-h-screen w-auto object-cover flex-1"
+          className="side-img min-h-screen w-auto flex-1 object-cover"
+          priority
         />
-        <div className="top-0 right-0 absolute mr-[3px] mt-[3px] p-5 ">
+        <div className="absolute right-0 top-0 mr-[3px] mt-[3px] p-5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
@@ -99,23 +95,15 @@ const HomeContent = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className=" flex flex-col text-white bg-gray-400 z-[10000] items-center justify-content-center"
+              className="justify-content-center z-[10000] flex flex-col items-center bg-gray-400 text-white"
             >
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                System
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <span>
-            <h1 className="text-1xl text-black font-bold hidden md:block">
-              Select the mode
-            </h1>
+            <h1 className="text-1xl hidden font-bold text-black md:block">Select the mode</h1>
           </span>
         </div>
         {open && <ChatBox onClose={closeChat} type={type} />}
