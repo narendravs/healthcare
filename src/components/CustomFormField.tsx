@@ -1,5 +1,5 @@
 import React from "react";
-import { Control } from "react-hook-form";
+import { Control,FieldValues, Path } from "react-hook-form";
 import Image from "next/image";
 import {
   FormControl,
@@ -28,9 +28,9 @@ export enum FormFieldType {
   CHECKBOX_GROUP = "checkboxGroup",
 }
 
-interface CustomProps {
-  control: Control<any>;
-  name: string;
+interface CustomProps <T extends FieldValues> {
+  control: Control<T>;
+  name: Path<T>;
   label: string;
   placeholder?: string;
   iconSrc?: string;
@@ -48,7 +48,7 @@ interface CustomProps {
   onChange?: (value: any) => void; // Optional onChange handler for SELECT
 }
 
-const RenderInput = ({ field, props }: { field: any; props: CustomProps }) => {
+const RenderInput = <T extends FieldValues> ({ field, props }: { field: any; props: CustomProps<T> }) => {
   switch (props.fieldType) {
     case FormFieldType.INPUT:
       return (
@@ -205,7 +205,7 @@ const RenderInput = ({ field, props }: { field: any; props: CustomProps }) => {
   }
 };
 
-const CustomFormField = (props: CustomProps) => {
+const CustomFormField = <T extends FieldValues>(props: CustomProps<T>) => {
   const { control, name, label } = props;
   return (
     <FormField
