@@ -1,5 +1,6 @@
 import { Tool } from "@langchain/core/tools";
 import { getUserByExactName, getPatient } from "@/lib/actions/patient.actions";
+import {getDoctors} from "@/lib/actions/doctors.actions";
 
 export class GetUserByNameTool extends Tool {
   name = "get_user_by_name";
@@ -12,6 +13,20 @@ export class GetUserByNameTool extends Tool {
       return JSON.stringify({ userId: user.$id, name: user.name });
     }
     return "User not found.";
+  }
+}
+
+export class GetDoctorsListTool extends Tool {
+  name = "get_doctor_list";
+  description =
+    "Returns a list of all available doctors. Use this to let the user choose a primary physician.";
+
+  async _call(_input: string): Promise<string> {
+    const doctor = await getDoctors();
+    if (doctor) {
+      return JSON.stringify(doctor);
+    }
+    return "Doctor details not found.";
   }
 }
 
@@ -37,11 +52,11 @@ export class CreateAppointmentTool extends Tool {
   description = `
     Used to create a new appointment record. The input must be a single JSON string with the following required keys:
     - 'userId' (string): The ID of the user.
-    - 'patient' (string): The document ID of the patient record.
+    - 'patient' (string): The UNIQUE DOCUMENT ID of the patient (e.g., '652...'), NOT the patient's name.
     - 'primaryPhysician' (string): The doctor's name.
     - 'reason' (string): The reason for the visit.
     - 'schedule' (string): The date and time of the appointment in ISO 8601 format.
-    - 'status' (string): The appointment status (e.g., 'pending', 'scheduled', 'cancelled').
+    - 'status' (string): The appointment status. This MUST always be set to 'pending' for new appointments.
     - 'note' (string, optional): Any additional notes for the appointment.
     `;
 

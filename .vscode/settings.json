@@ -8,13 +8,13 @@
   "editor.tabSize": 2,
 
   /* 1. TypeScript & IntelliSense Optimization */
-  "typescript.tsdk": "./node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "typescript.suggestionActions.enabled": true,
-  "editor.suggestSelection": "recentlyUsed",
+  "js/ts.tsdk.path": "./node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "js/ts.suggestionActions.enabled": true,
+  "js/ts.suggest.enabled": true,
   /* This tells VS Code specifically to check this path for TS */
-  "javascript.suggest.enabled": true,
-  "typescript.format.enable": true,
+  "js/ts.format.enabled": true,
+  
 
   /* 2. Tailwind CSS v4 Specifics */
   "tailwindCSS.emmetCompletions": true,
