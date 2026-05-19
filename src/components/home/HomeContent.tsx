@@ -20,12 +20,24 @@ const HomeContent = () => {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string>("");
   const type = "database";
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
 
   useEffect(() => {
+
+    // 🚀 Generate a persistent, unique session token for this browser tab session
+    if (typeof window !== "undefined") {
+      const currentSession = sessionStorage.getItem("active_chat_session");
+      if (!currentSession) {
+       const currentSession = `session_${window.crypto.randomUUID()}`;
+        sessionStorage.setItem("active_chat_session", currentSession);
+      }
+      setChatSessionId(currentSession);
+    }
+
     if (admin === "true") setIsAdmin(true);
     setMounted(true);
   }, [admin]);
@@ -33,7 +45,17 @@ const HomeContent = () => {
   const openChat = () => {
     setOpen(true);
   };
-  const closeChat = () => {
+  const closeChat = async () => {
+    const response = await fetch(
+          `/api/aiagents/langchainAgent`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sessionId: chatSessionId }),
+          }
+        );
     setOpen(false);
   };
 
@@ -106,7 +128,7 @@ const HomeContent = () => {
             <h1 className="text-1xl hidden font-bold text-black md:block">Select the mode</h1>
           </span>
         </div>
-        {open && <ChatBox onClose={closeChat} type={type} />}
+        {open && <ChatBox onClose={closeChat} type={type} sessionId={chatSessionId} />}
       </div>
     </div>
   );

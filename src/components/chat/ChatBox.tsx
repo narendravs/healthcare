@@ -22,9 +22,10 @@ import PasskeyModal from "@/components/PasskeyModal";
 interface ChatBoxProps {
   onClose: () => void;
   type: "database" | "documents";
+  sessionId: string;
 }
 
-const ChatBox = ({ onClose, type }: ChatBoxProps) => {
+const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
   const [message, setMessage] = useState([
     { role: "bot", content: "Hello! How can I help you today?" },
   ]);
@@ -118,7 +119,7 @@ const ChatBox = ({ onClose, type }: ChatBoxProps) => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ query: currentInput }),
+          body: JSON.stringify({ query: currentInput,sessionId:sessionId}),
         });
 
         if (!response.ok) {
