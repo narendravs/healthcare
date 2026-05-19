@@ -2,40 +2,40 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
-
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "@langchain/core/prompts";
+import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { ChatGroq } from "@langchain/groq";
 import { Calculator } from "@langchain/community/tools/calculator";
 import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
-
-// This is still needed for your custom actions, but not in this examplecd
 import { BaseLLMCallOptions } from "@langchain/core/language_models/llms";
+import { Client } from "langsmith";
+import { RunnableWithMessageHistory } from "@langchain/core/runnables";
+
+// Redis Connection Imports
+import { UpstashRedisChatMessageHistory } from "@langchain/community/stores/message/upstash_redis";
+
 import {
   GetUserByNameTool,
   GetDoctorsListTool,
   GetPatientTool,
   CreateAppointmentTool,
   NavigateToAdminTool,
-  
 } from "@/tools/custom-tools";
 
-// Import the Client from LangSmith to ensure it's available for tracing
-import { Client } from "langsmith";
+// Initialize Upstash Redis Wrapper Factory
+export const getRedisChatHistory = (sessionId: string) => {
+  return new UpstashRedisChatMessageHistory({
+    sessionId,
+    config: {
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    },
+    sessionTTL: 86400, // 24-hour expiration window
+  });
+};
 
-// NEW: Import for history management
-import { ChatMessageHistory } from "langchain/stores/message/in_memory";
-import { RunnableWithMessageHistory } from "@langchain/core/runnables";
-
-// Initialize the client outside the handler
 const lsClient = new Client();
-
 const GROQ_APIKEY = process.env.GROQ_API_KEY;
 
-// Define the tools the agent will have access to.
-// You can still add your custom tools here.
 const tools = [
   new Calculator(),
   new DuckDuckGoSearch(),
@@ -46,7 +46,6 @@ const tools = [
   new NavigateToAdminTool(),
 ];
 
-// Create a ChatPromptTemplate with the required placeholders.
 const prompt = ChatPromptTemplate.fromMessages([
   [
     "system",
@@ -95,53 +94,39 @@ As soon as 'create_appointment' returns success, you must execute a "Double Tool
 CRITICAL: Do not provide a text response after 'create_appointment' unless it is accompanied by the 'navigate_to_admin' tool call. If you simply say "Redirecting" without calling the tool, the system will fail. Your output MUST include a tool_call to 'navigate_to_admin'.
 
 Available Tools: {tool_names}`,
-
   ],
   new MessagesPlaceholder("chat_history"),
   ["human", "{input}"],
   new MessagesPlaceholder("agent_scratchpad"),
 ]);
 
-// Initialize the Hugging Face LLM using the model and your API key
 const llm = new ChatGroq({
   apiKey: GROQ_APIKEY,
-  model: "meta-llama/llama-4-scout-17b-16e-instruct", // or 'mixtral-8x7b-instruct'
+  model: "meta-llama/llama-4-scout-17b-16e-instruct",
   temperature: 0,
 });
 
-// Explicitly bind the tools to the LLM
 const llmWithTools = llm.bind({ tools } as BaseLLMCallOptions);
 
-// Use createToolCallingAgent
 const agent = await createToolCallingAgent({
   llm: llmWithTools,
   tools,
   prompt,
 });
 
+// Primary runtime executor instance
 const agentExecutor = new AgentExecutor({
   agent,
   tools,
-  handleParsingErrors: true, // Optional: handle parsing errors
-  //maxIterations: 25,
-  // verbose: true, // Add this line
+  handleParsingErrors: true,
 });
 
-/** 
- * IN-MEMORY STORAGE 
- * Note: In Next.js production (Vercel), this variable is wiped between requests.
- * We will populate it from the 'history' sent by your frontend.
- */
-const messageHistoryStore: Record<string, ChatMessageHistory> = {};
-
-// Wrap the executor with history logic
+// Unified Message History Wrapper pointing directly to Redis
 const agentWithChatHistory = new RunnableWithMessageHistory({
   runnable: agentExecutor,
+  // The history object handles updates/appends under the hood upon output return!
   getMessageHistory: async (sessionId: string) => {
-    if (!messageHistoryStore[sessionId]) {
-      messageHistoryStore[sessionId] = new ChatMessageHistory();
-    }
-    return messageHistoryStore[sessionId];
+    return getRedisChatHistory(sessionId);
   },
   inputMessagesKey: "input",
   historyMessagesKey: "chat_history",
@@ -149,30 +134,31 @@ const agentWithChatHistory = new RunnableWithMessageHistory({
 
 export async function POST(req: NextRequest) {
   if (req.method !== "POST") {
-    return NextResponse.json(
-      { message: "Method Not Allowed" },
-      { status: 405 },
-    );
+    return NextResponse.json({ message: "Method Not Allowed" }, { status: 405 });
   }
 
-  const { query, history, sessionId = "default-session" } = await req.json();
-  
   try {
-    // Extract tool names for the prompt
+    const { query, history, sessionId } = await req.json();
     const toolNames = tools.map((tool) => tool.name).join(", ");
 
-    // 1. If the frontend sends history, seed the in-memory store for this request
+    // OPTIONAL: If your frontend forces an absolute snapshot sync on load
     if (history && history.length > 0) {
-      const chatHistory = new ChatMessageHistory();
-      // Map your incoming history objects to LangChain Message classes
-      for (const msg of history) {
-        if (msg.role === "user") await chatHistory.addUserMessage(msg.content);
-        else await chatHistory.addAIChatMessage(msg.content);
+      const activeRedisStore = getRedisChatHistory(sessionId);
+      const currentMessages = await activeRedisStore.getMessages();
+      
+      // Seed ONLY if Redis is currently pristine/empty to prevent performance lag
+      if (currentMessages.length === 0) {
+        for (const msg of history) {
+          if (msg.role === "user") {
+            await activeRedisStore.addUserMessage(msg.content);
+          } else {
+            await activeRedisStore.addAIChatMessage(msg.content);
+          }
+        }
       }
-      messageHistoryStore[sessionId] = chatHistory;
     }
 
-    // 2. Execute the agent
+    // Run execution context. State changes automatically sync to Upstash via RunnableWrapper
     const result = await agentWithChatHistory.invoke(
       { 
         input: query, 
@@ -183,26 +169,41 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    console.log("Result from the api", result);
-    console.log("Result from the api output", result.output);
+    console.log("Result from the API output:", result.output);
 
-    // CRITICAL: Wait for all traces to be uploaded
-    // This ensures that the background upload finishes before the response is sent
     if (process.env.LANGSMITH_TRACING === "true") {
-       await lsClient.awaitPendingTraceBatches();
+      await lsClient.awaitPendingTraceBatches();
     }
     
     return NextResponse.json({ output: result.output }, { status: 200 });
   } catch (error) {
     console.error("Agent execution error:", error);
 
-    // Also flush on error to see the failure in LangSmith
     if (process.env.LANGSMITH_TRACING === "true") {
        await lsClient.awaitPendingTraceBatches();
     }
     return NextResponse.json(
       { error: "Failed to process request." },
-      { status: 500 },
+      { status: 500 }
     );
+  }
+}
+
+export async function DELETE(req: NextRequest) { 
+
+  try {
+    const { sessionId } = await req.json();
+
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
+    }
+
+    const activeRedisStore = getRedisChatHistory(sessionId);
+    await activeRedisStore.clear(); // 🧼 Wipes the Upstash Redis history instantly
+
+    return NextResponse.json({ message: "Chat window session wiped" }, { status: 200 });
+  } catch (error) {
+    console.error("Failed to clear Redis history on window close:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
