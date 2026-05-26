@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "commonjs",
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
     "rootDir": "./",
     "outDir": "../../../dist/embeddings/database-embeddings",
     "strict": true,
@@ -9,7 +10,8 @@
     "tsBuildInfoFile": "../../../dist/embeddings/database-embeddings/tsconfig.database.tsbuildinfo",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": false
   },
   "include": ["**/*"],
   "exclude": ["node_modules"]
