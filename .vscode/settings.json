@@ -7,14 +7,26 @@
   },
   "editor.tabSize": 2,
 
-  /* 1. TypeScript & IntelliSense Optimization */
+  /* 1. TypeScript & IntelliSense Optimization (Unified Namespace) */
   "js/ts.tsdk.path": "./node_modules/typescript/lib",
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
-  "js/ts.suggestionActions.enabled": true,
   "js/ts.suggest.enabled": true,
-  /* This tells VS Code specifically to check this path for TS */
-  "js/ts.format.enabled": true,
-  
+
+  // Prevents the language server from aggressively locking dependencies on boot
+  "js/ts.preferences.includePackageJsonAutoImports": "on",
+
+  // Allocates extra memory overhead to the unified background server loop
+  "js/ts.tsserver.maxMemory": 4096,
+
+  // ADDED: Actively blocks VS Code file-watchers from deep-crawling active framework environments
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/dist/**": true
+  },
 
   /* 2. Tailwind CSS v4 Specifics */
   "tailwindCSS.emmetCompletions": true,
@@ -24,8 +36,8 @@
     "typescriptreact": "typescriptreact"
   },
   "tailwindCSS.experimental.classRegex": [
-    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*)\"['`]"], // Helps with CVA (Class Variance Authority)
-    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*)\"['`]"]  // Helps with your 'cn' utility
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*)\"['`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*)\"['`]"]
   ],
 
   /* 3. Performance: Hide unnecessary noise from Suggestions */
@@ -42,7 +54,7 @@
   },
 
   /* 4. Project-Specific Snippets & Suggestions */
-  "editor.suggest.showWords": false, // Disables annoying generic word suggestions
-  "editor.snippetSuggestions": "top", // Puts snippets (like 'rafce') at the very top
+  "editor.suggest.showWords": false,
+  "editor.snippetSuggestions": "top",
   "explorer.compactFolders": false
 }

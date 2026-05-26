@@ -52,7 +52,7 @@ const createPineconeIndex = async (indexName: string, dimension: number) => {
 // --- Main Execution Block ---
 
 // Replace these with your desired index name and the embedding model's dimension
-const myIndexName = "document";
+const myIndexName = "healthcare-cloud";
 const embeddingDimension = 1024; // The dimension for "Xenova/bge-m3"
 
 // Run the function to create the index

@@ -45,18 +45,24 @@ const HomeContent = () => {
   const openChat = () => {
     setOpen(true);
   };
-  const closeChat = async () => {
-    const response = await fetch(
-          `/api/aiagents/langchainAgent`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ sessionId: chatSessionId }),
-          }
-        );
-    setOpen(false);
+
+  const closeChat = async (currentDataType: "database" | "documents" | "apicall") => {
+   
+    // Only execute the DELETE fetch if the agent was actually hitting the LangChain route
+  if (currentDataType === "apicall") {
+    try {
+      await fetch(`/api/aiagents/langchainAgent`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: chatSessionId }),
+      });
+    } catch (err) {
+      console.error("Failed to tear down chat agent session context:", err);
+    }
+  }
+  
+  // Always close the UI state for database, documents, or completed apicalls
+  setOpen(false);
   };
 
   return (

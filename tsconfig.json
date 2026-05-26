@@ -31,6 +31,21 @@
       "@/tools/*": ["./src/tools/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts","additional - env.d.ts"],
-  "exclude": ["node_modules"]
+ // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat
+  "include": [
+    "next-env.d.ts", 
+    "additional-env.d.ts",
+    "src/**/*.ts", 
+    "src/**/*.js",
+    "src/**/*.tsx", 
+    "src/**/*.jsx", 
+    ".next/types/**/*.ts"
+  ],
+  // CHANGED: Added Next build and distribution outputs explicitly to the compiler block list
+  "exclude": [
+    "node_modules",
+    ".next",
+    "dist",
+    "build"
+  ]
 }
