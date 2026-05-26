@@ -1,17 +1,20 @@
-// index.js
 
 import { appwriteService } from "../database-embeddings/services/appWriteServices";
 import { pineconeService } from "../database-embeddings/services/pineconeService";
 import { readTimestamp, writeTimestamp } from "./utils/timestampManager";
 import { huggingFaceEmbedService } from "../database-embeddings/services/huggingFaceEmbedService";
+import {getEmbeddingForQuery} from '../database-embeddings/services/cloudBaseEmbedService';
 
 import * as dotenv from "dotenv";
-dotenv.config(); // Load environment variables
+dotenv.config(); 
+
+// 🛡️ FIX: Convert the string configuration safely into a real Boolean
+const USE_CLOUD_EMBEDDINGS = process.env.USE_CLOUD_EMBEDDINGS?.trim().toLowerCase() === "true";
 
 // --- Configuration from .env ---
 const APPWRITE_DATABASE_ID = process.env.DATABASE_ID;
 const LAST_CHECKED_TIMESTAMP_FILE =
-  process.env.LAST_CHECKED_TIMESTAMP_FILE || "last_checked_timestamp.txt";
+process.env.LAST_CHECKED_TIMESTAMP_FILE || "last_checked_timestamp.txt";
 const PATIENT_COLLECTION_ID = process.env.PATIENT_COLLECTION_ID;
 const DOCTOR_COLLECTION_ID = process.env.DOCTOR_COLLECTION_ID;
 const APPOINTMENT_COLLECTION_ID = process.env.APPOINTMENT_COLLECTION_ID;
@@ -28,9 +31,14 @@ export async function runEmbeddingCronJob() {
   try {
     // Initialize Pinecone connection once
     await pineconeService.initializePinecone();
-    // Initialize Hugging face embed connection once
-    await huggingFaceEmbedService.initializeEmbeddingModel();
 
+    // PROTOTYPE EXPLANATION LOGS FOR RECRUITERS GENERATE EMBDDINGS FROM LOCAL OR CLOUD BASED
+    if (USE_CLOUD_EMBEDDINGS) {
+      console.log("☁️ Strategy: Cloud-Based Embeddings via SiliconFlow API (Qwen/Qwen3-Embedding-0.6B)");
+    } else {
+      console.log("💻 Strategy: Local CPU-Based Embeddings via Transformers / HuggingFace");
+      await huggingFaceEmbedService.initializeEmbeddingModel();
+    }
     // Read the last checked timestamp for the entire database
     let lastCheckedTimestamp = await readTimestamp(LAST_CHECKED_TIMESTAMP_FILE);
     console.log(`Last processed timestamp: ${lastCheckedTimestamp}`);
@@ -165,9 +173,16 @@ export async function runEmbeddingCronJob() {
         }
 
         try {
-          const embedding = await huggingFaceEmbedService.getEmbedding(
-            documentContent
-          );
+          let embedding: number[];
+         if (USE_CLOUD_EMBEDDINGS) {
+            // Option A: Cloud pipeline
+            embedding = await getEmbeddingForQuery(documentContent);
+          } else {
+            // Option B: Local fallback pipeline (Ready for Recruiter Walkthroughs)
+            console.log(`⚙️ [PROTOTYPE FALLBACK] Generating local CPU embedding via Transformers for ${documentId}...`);
+            embedding = await huggingFaceEmbedService.getEmbedding(documentContent);
+          }
+
           const pineconeRecord = {
             id: `${documentId}`,
             values: embedding,
