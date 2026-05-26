@@ -5,9 +5,9 @@ dotenv.config();
 
 // --- Configuration ---
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_INDEX_NAME = process.env.PINECONE_DB_INDEX_NAME;
-const PINECONE_INDEX_HOST = process.env.PINECONE_DB_INDEX_HOST;
-const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_DB_INDEX_NAME_SPACE;
+const PINECONE_INDEX_NAME = process.env.PINECONE_CLOUD_DB_INDEX_NAME;
+const PINECONE_INDEX_HOST = process.env.PINECONE_CLOUD_DB_INDEX_HOST;
+const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_CLOUD_DB_INDEX_NAME_SPACE;
 
 // let pinecone;
 // let pineconeIndex: any;
