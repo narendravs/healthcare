@@ -4,6 +4,7 @@
 /dist
 /src/embeddings/public/
 /node_modules
+last_checked_timestamp.txt
 
 # next.js
 /.next/
