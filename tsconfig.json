@@ -4,6 +4,7 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -31,21 +32,16 @@
       "@/tools/*": ["./src/tools/*"]
     }
   },
- // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat
+  // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat
   "include": [
-    "next-env.d.ts", 
+    "next-env.d.ts",
     "additional-env.d.ts",
-    "src/**/*.ts", 
+    "src/**/*.ts",
     "src/**/*.js",
-    "src/**/*.tsx", 
-    "src/**/*.jsx", 
+    "src/**/*.tsx",
+    "src/**/*.jsx",
     ".next/types/**/*.ts"
   ],
   // CHANGED: Added Next build and distribution outputs explicitly to the compiler block list
-  "exclude": [
-    "node_modules",
-    ".next",
-    "dist",
-    "build"
-  ]
+  "exclude": ["node_modules", ".next", "dist", "build"]
 }
