@@ -81,7 +81,20 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
 
         if (resultText && resultText.trim().length > 0) {
-          const botMessage = { role: "bot", content: resultText };
+              // 1. Extract flags from the metadata object safely
+        const isDocGenuine = data.meta?.isValidated;
+        const checkedFile = data.meta?.documentChecked || "Unknown Document";
+
+        // 2. Format a professional, clean string badge to prepend to the message content
+        const verificationBadge = isDocGenuine
+          ? `🟢 [Verified Ground-Truth Source: ${checkedFile}]\n`
+          : `🔴 [Warning: File Verification Failure for ${checkedFile}]\n`;
+
+        // 3. Concatenate the header banner directly with the main AI prose response
+        const finalFormattedContent = `${verificationBadge}----------------------------------------\n${resultText}`;
+
+        // 4. Update state using strictly 'role' and 'content' properties
+          const botMessage = { role: "bot", content: finalFormattedContent};
           setMessage((prevMsg) => [...prevMsg, botMessage]);
           } else {
           setMessage((prevMsg) => [
