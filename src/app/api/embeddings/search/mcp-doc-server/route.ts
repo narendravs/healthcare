@@ -216,8 +216,18 @@ export async function POST(req: NextRequest) {
 
       console.log(`[MCP Tool Result] ${toolPayloadString}`);
 
+      // 🛡️ CRITICAL STEP: Extract the verification status out of the stringified JSON
+      let isVerified = false;
+      try {
+        const parsedToolPayload = JSON.parse(toolPayloadString);
+        isVerified = !!parsedToolPayload.isDocumentValid;
+      } catch (e) {
+        console.error("Failed parsing stringified payload from MCP output stream:", e);
+      }
+
       // Push historical chain to maintain agent state context
       messages.push(primaryChoiceMessage);
+
       messages.push({
         role: "tool",
         tool_call_id: activeToolCall.id,
@@ -229,13 +239,17 @@ export async function POST(req: NextRequest) {
       const finalCleanCompletion = await groq.chat.completions.create({
         model: GROQ_MODEL,
         messages,
-        temperature: 0.3
+        temperature: 0.1 // 📉 Lowered temperature to stop hallucination of medical facts
       });
 
       console.log("Groq Final Completion:", finalCleanCompletion.choices[0].message.content);
 
       return NextResponse.json({
-        result: finalCleanCompletion.choices[0].message.content || "No information processed by the validation pipeline."
+        result: finalCleanCompletion.choices[0].message.content || "No information processed by the validation pipeline.",
+        meta: {
+          isValidated: isVerified,
+          documentChecked: sourceFilename
+         }
       }, { status: 200 });
     }
 
