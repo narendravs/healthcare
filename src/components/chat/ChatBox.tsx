@@ -67,7 +67,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
      }
       // 2. DOCUMENTS ROUTE (Now safely encapsulated within the try block)
       else if (dataType === "documents") {
-        const response = await fetch(`/api/embeddings/search/pineconeDOCEmbedSearch`, {
+        const response = await fetch(`/api/embeddings/search/mcp-doc-server`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
@@ -75,17 +75,31 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
 
         if (!response.ok) throw new Error(`Document search failed with status: ${response.status}`);
         const data = await response.json();
+        console.log("Document Search API Response:", data);
 
-        if (data.results && data.results.length > 0) {
-          const botMessages = data.results.map((match: any) => ({
-            role: "bot",
-            content: `${match?.relevantContent}`,
-          }));
-          setMessage((prevMsg) => [...prevMsg, ...botMessages]);
-        } else {
+        // Defensive check: ensure result is a string before trimming
+        const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
+
+        if (resultText && resultText.trim().length > 0) {
+              // 1. Extract flags from the metadata object safely
+        const isDocGenuine = data.meta?.isValidated;
+        const checkedFile = data.meta?.documentChecked || "Unknown Document";
+
+        // 2. Format a professional, clean string badge to prepend to the message content
+        const verificationBadge = isDocGenuine
+          ? `🟢 [Verified Ground-Truth Source: ${checkedFile}]\n`
+          : `🔴 [Warning: File Verification Failure for ${checkedFile}]\n`;
+
+        // 3. Concatenate the header banner directly with the main AI prose response
+        const finalFormattedContent = `${verificationBadge}----------------------------------------\n${resultText}`;
+
+        // 4. Update state using strictly 'role' and 'content' properties
+          const botMessage = { role: "bot", content: finalFormattedContent};
+          setMessage((prevMsg) => [...prevMsg, botMessage]);
+          } else {
           setMessage((prevMsg) => [
             ...prevMsg,
-            { role: "bot", content: "Sorry, I couldn't find any relevant information for your query." },
+            { role: "bot", content: "I couldn't find any relevant documents for that query." },
           ]);
         }
       } 
@@ -109,18 +123,15 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         let finalMessage = data.output;
 
         try {
-          const agentOutput = data.output;
+          const agentOutput = typeof data.output === 'string' ? data.output : "";
           console.log("2. String to be parsed:", agentOutput);
 
-          if (agentOutput && agentOutput.includes("successfully")) {
+          if (agentOutput.includes("successfully")) {
             setIsPasscodeModalOpen(true);
             isNavigationAction = true;
             finalMessage = "Okay, I've created the appointment. Please enter the passcode to access the admin page.";
             
-            setMessage((prevMsg) => [
-              ...prevMsg,
-              { role: "bot", content: finalMessage },
-            ]);
+            setMessage((prevMsg) => [...prevMsg, { role: "bot", content: finalMessage }]);
           }
         } catch (e) {
           console.error("Agent output parse handling exception:", e);
