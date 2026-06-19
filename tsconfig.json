@@ -40,7 +40,9 @@
     "src/**/*.js",
     "src/**/*.tsx",
     "src/**/*.jsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "__tests__/unit-tests/*.tsx",
+    "__tests__/integration-tests/*.tsx"
   ],
   // CHANGED: Added Next build and distribution outputs explicitly to the compiler block list
   "exclude": ["node_modules", ".next", "dist", "build"]
