@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
     //   } catch (closeError) {
     //     console.error("Failed to cleanly shut down MCP client connection:", closeError);
     //   }
+    //   }
     console.log("📥 Request transaction complete. Keeping connection pool alive.");
-    }
   }
 }
