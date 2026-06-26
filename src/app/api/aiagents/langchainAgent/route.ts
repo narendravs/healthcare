@@ -138,25 +138,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { query, history, sessionId } = await req.json();
-    const toolNames = tools.map((tool) => tool.name).join(", ");
+    const { query, sessionId } = await req.json();
 
-    // OPTIONAL: If your frontend forces an absolute snapshot sync on load
-    if (history && history.length > 0) {
-      const activeRedisStore = getRedisChatHistory(sessionId);
-      const currentMessages = await activeRedisStore.getMessages();
-      
-      // Seed ONLY if Redis is currently pristine/empty to prevent performance lag
-      if (currentMessages.length === 0) {
-        for (const msg of history) {
-          if (msg.role === "user") {
-            await activeRedisStore.addUserMessage(msg.content);
-          } else {
-            await activeRedisStore.addAIChatMessage(msg.content);
-          }
-        }
-      }
+    // Add explicit validation guard
+    if (!sessionId) {
+      console.error("❌ API Error: sessionId is missing in request payload");
+      return NextResponse.json(
+        { error: "Bad Request: sessionId is required to maintain chat continuity." },
+        { status: 400 }
+      );
     }
+    
+    const toolNames = tools.map((tool) => tool.name).join(", ");
 
     // Run execution context. State changes automatically sync to Upstash via RunnableWrapper
     const result = await agentWithChatHistory.invoke(
