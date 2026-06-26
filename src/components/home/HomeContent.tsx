@@ -30,9 +30,9 @@ const HomeContent = () => {
 
     // 🚀 Generate a persistent, unique session token for this browser tab session
     if (typeof window !== "undefined") {
-      const currentSession = sessionStorage.getItem("active_chat_session");
+      let currentSession = sessionStorage.getItem("active_chat_session");
       if (!currentSession) {
-       const currentSession = `session_${window.crypto.randomUUID()}`;
+        currentSession = `session_${window.crypto.randomUUID()}`;
         sessionStorage.setItem("active_chat_session", currentSession);
       }
       setChatSessionId(currentSession);
