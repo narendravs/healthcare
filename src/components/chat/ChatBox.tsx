@@ -49,7 +49,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
     try {
       // 1. DATABASE ROUTE
       if (dataType === "database") {
-        const response = await fetch(`/api/embeddings/search/mcp-db-server`, {
+        const response = await fetch(`/api/mcp-client-remote/mcp-db-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
@@ -61,13 +61,13 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
             { 
               role: "bot", 
               content: data.answer,
-              },
+              }
           ]);
         }
      }
       // 2. DOCUMENTS ROUTE (Now safely encapsulated within the try block)
       else if (dataType === "documents") {
-        const response = await fetch(`/api/embeddings/search/mcp-doc-server`, {
+        const response = await fetch(`/api/mcp-client-remote/mcp-doc-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
@@ -105,10 +105,16 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
       } 
       // 3. API CALL ROUTE
       else if (dataType === "apicall") {
+      // 🟩 FALLBACK: If state hasn't propagated, read directly from storage
+        const activeSessionId = (sessionId && sessionId.trim() !== "") ? sessionId : (typeof window !== "undefined" ? sessionStorage.getItem("active_chat_session") : null);
+      
+      if (!activeSessionId) {
+        throw new Error("Local session verification failed. Please refresh your browser.");
+      }
         const response = await fetch(`/api/aiagents/langchainAgent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: currentInput, sessionId: sessionId }),
+          body: JSON.stringify({ query: currentInput, sessionId: activeSessionId }),
         });
 
         if (!response.ok) {
