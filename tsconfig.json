@@ -29,7 +29,8 @@
       "@/constants/*": ["./src/constants/*"],
       "@/types/*": ["./src/types/*"],
       "@/embeddings/*": ["./src/embeddings/*"],
-      "@/tools/*": ["./src/tools/*"]
+      "@/tools/*": ["./src/tools/*"],
+      "@/mcp-server/*": ["./src/mcp-server/*"]
     }
   },
   // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat
