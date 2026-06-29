@@ -1,6 +1,6 @@
 {
   "functions": {
-    "app/api/mcp-client-remote/mcp-doc-client/route.ts": {
+    "src/app/api/mcp-client-remote/mcp-doc-client/route.ts": {
       "memory": 4096,
       "maxDuration": 300
     }
