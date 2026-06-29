@@ -3,11 +3,18 @@ import path from "node:path";
 
 // Main Third-Party Data Systems
 import { Pinecone } from "@pinecone-database/pinecone";
-import { pipeline } from "@xenova/transformers";
+import { pipeline, env } from "@xenova/transformers";
 import Groq from "groq-sdk";
 
 // Official Model Context Protocol SDK Client Imports
 import { Client as McpClient } from "@modelcontextprotocol/client";
+
+
+// Configure the environment globally before invocation
+env.cacheDir = "/tmp/.transformers_cache";
+
+// Disables looking for models in local folders, forces cache path usage
+env.allowLocalModels = false; 
 
 // Initialize Groq Cloud Engine
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -95,8 +102,7 @@ async function cleanUpMcpClient() {
     if (sharedMcpClient) await sharedMcpClient.close();
   } catch (err) {}
   sharedMcpClient = null;
-  sharedMcpTransport = null;
-}
+  }
 
 // =================================================================
 // 🚀 AGENTIC AGGREGATION & EXECUTION ROUTE
