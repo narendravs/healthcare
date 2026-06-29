@@ -8,7 +8,7 @@ import {
   PATIENT_COLLECTION_ID,
   databases,
   users
-} from "@/lib/actions/appointment.actions";
+} from "@/lib/actions/appwrite.config";
 
 
 
