@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
-import { runDocumentProcess } from "@/embeddings/doc-embeddings/documentEmbeddings.ts";
+import { runDocumentProcess } from "@/embeddings/doc-embeddings/documentCloudEmbeddings.ts";
 export async function POST(req: NextRequest) {
   if (req.method != "POST") {
     return NextResponse.json(
