@@ -3,18 +3,11 @@ import path from "node:path";
 
 // Main Third-Party Data Systems
 import { Pinecone } from "@pinecone-database/pinecone";
-import { pipeline, env } from "@xenova/transformers";
 import Groq from "groq-sdk";
 
 // Official Model Context Protocol SDK Client Imports
 import { Client as McpClient } from "@modelcontextprotocol/client";
 
-
-// Configure the environment globally before invocation
-env.cacheDir = "/tmp/.transformers_cache";
-
-// Disables looking for models in local folders, forces cache path usage
-env.allowLocalModels = false; 
 
 // Initialize Groq Cloud Engine
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -22,9 +15,9 @@ const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 // Configure your Pinecone index and namespace
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-const PINECONE_INDEX_NAME = process.env.PINECONE_DOC_INDEX_NAME;
-const PINECONE_INDEX_HOST = process.env.PINECONE_DOC_INDEX_HOST;
-const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_DOC_INDEX_NAME_SPACE;
+const PINECONE_INDEX_NAME = process.env.PINECONE_CLOUD_DOC_INDEX_NAME;
+const PINECONE_INDEX_HOST = process.env.PINECONE_CLOUD_DOC_INDEX_HOST;
+const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_CLOUD_DOC_INDEX_NAME_SPACE;
 
 const pinecone = new Pinecone({
   apiKey: PINECONE_API_KEY || "",
@@ -36,21 +29,39 @@ const namespace = pinecone
 
 let extractor: any;
 
-async function initializeModel() {
-  if (!extractor) {
-    extractor = await pipeline("feature-extraction", "Xenova/bge-m3");
-    console.log("Model loaded and ready to generate embeddings...");
-  }
-  return extractor;
-}
+async function getEmbedding(query: string): Promise<number[]> {
+  try {
+    // 🔑 SAFETY CHECK: Guard against missing environment variables
+    const apiKey = process.env.CLOUD_SILICON_EMBEDDING_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("CRITICAL: CLOUD_SILICON_EMBEDDING_API_KEY is missing from environment variables.");
+    }
 
-export async function getEmbedding(text: string): Promise<number[]> {
-  const initializedExtractor = await initializeModel();
-  const output = await initializedExtractor(text, {
-    pooling: "mean",
-    normalize: true,
-  });
-  return Array.from(output.data);
+    const response = await fetch("https://api.siliconflow.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.trim()}`, // Trim avoids hidden trailing space/newline errors
+      },
+      body: JSON.stringify({
+       model: "Qwen/Qwen3-Embedding-0.6B",
+       input: [query], 
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    console.log("👉 Received embedding response from SiliconFlow API:", data);
+    return data.data[0].embedding;
+  } catch (error) {
+    console.error("Error in Cloud Embedding generation:", error);
+    throw error;
+  }
 }
 
 const getSubstantiveQuery = (q: string): string => {
