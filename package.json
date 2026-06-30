@@ -20,9 +20,11 @@
     "build:doc-mcp": "esbuild ./src/mcp-server/mcp-doc-server/mcp-server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/mcp-doc-server/mcp-server.js",
     "database-build": "esbuild ./src/embeddings/database-embeddings/runEmbeddingCronJob.ts --bundle --platform=node --format=esm --packages=external --tsconfig=./src/embeddings/database-embeddings/tsconfig.database.json --outfile=dist/embeddings/database-embeddings/runEmbeddingCronJob.js",
     "doc-build": "esbuild ./src/embeddings/doc-embeddings/documentEmbeddings.ts --bundle --platform=node --format=esm --packages=external --tsconfig=./src/embeddings/doc-embeddings/tsconfig.doc.json --outfile=dist/embeddings/doc-embeddings/documentEmbeddings.js",
+    "doc-cloud-build": "esbuild ./src/embeddings/doc-embeddings/documentCloudEmbeddings.ts --bundle --platform=node --format=esm --packages=external --tsconfig=./src/embeddings/doc-embeddings/tsconfig.doc.json --outfile=dist/embeddings/doc-embeddings/documentCloudEmbeddings.js",
     "// --- Bulletproof Local Runners (Type-Check -> Build -> Execute) ---": "",
     "database-run": "npm run type-check:database && npm run database-build && node ./dist/embeddings/database-embeddings/runEmbeddingCronJob.js",
-    "doc-run": "npm run type-check:doc && npm run doc-build && node ./dist/embeddings/doc-embeddings/documentEmbeddings.js"
+    "doc-run": "npm run type-check:doc && npm run doc-build && node ./dist/embeddings/doc-embeddings/documentEmbeddings.js",
+    "doc-cloud-run": "npm run type-check:doc && npm run doc-cloud-build && node ./dist/embeddings/doc-embeddings/documentCloudEmbeddings.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
