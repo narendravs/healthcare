@@ -56,11 +56,31 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         });
         const data = await response.json();
         if (data.answer) {
+          const isVerified = data?.isVerified;
+          const answer = data?.answer;
+          const tableName = data?.tableName || "Unknown Table";
+
+        let finalFormattedContent = "";
+
+          if (isVerified) {
+            // 🟢 CASE A: Data exists and is cleanly verified
+            const verificationBadge = `🟢 [Verified Ground-Truth Source: ${tableName}]\n`;
+            finalFormattedContent = `${verificationBadge}----------------------------------------\n${answer}`;
+          } else {
+            // 🔴 CASE B: Data does not exist in the table or verification failed
+            const verificationBadge = `🔴 [Data Source Notice: ${tableName}]\n`;
+            
+            // Create a highly human-readable, clear fallback response for the user
+            const userReadableFallback = `We searched the system, but no matching records could be found in the "${tableName}" database table. Please check your query parameters and try again.`;
+            
+            finalFormattedContent = `${verificationBadge}----------------------------------------\n${userReadableFallback}`;
+          }
+        
           setMessage((prevMsg) => [
             ...prevMsg,
             { 
               role: "bot", 
-              content: data.answer,
+              content: finalFormattedContent,
               }
           ]);
         }
