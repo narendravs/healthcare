@@ -6,7 +6,7 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
 
 // Official Model Context Protocol SDK Client Imports
-import { Client as McpClient } from "@modelcontextprotocol/client";
+import { Client as McpClient, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 
 // Initialize Groq Cloud Engine
@@ -24,10 +24,8 @@ const pinecone = new Pinecone({
 });
 
 const namespace = pinecone
-  .index(PINECONE_INDEX_NAME!, PINECONE_INDEX_HOST)
+  .index(PINECONE_INDEX_NAME!, PINECONE_INDEX_HOST!)
   .namespace(PINECONE_INDEX_NAME_SPACE!);
-
-let extractor: any;
 
 async function getEmbedding(query: string): Promise<number[]> {
   try {
@@ -73,47 +71,45 @@ const getSubstantiveQuery = (q: string): string => {
   return q;
 };
 
-  
+// Global MCP client instance for persistent connection reuse
+let mcpClientInstance: McpClient as any = null; 
+
 // =================================================================
 // 🛡️ PERSISTENT MCP CONNECTION WRAPPER POOL
 // =================================================================
-let sharedMcpClient: McpClient | null = null;
+async function getMcpClient(): Promise<McpClient> {
 
-async function getConnectedMcpClient(): Promise<McpClient> {
-  try {
-    if (sharedMcpClient) {
-      try {
-        await sharedMcpClient.listTools();
-        return sharedMcpClient;
-      } catch (e) {
-        console.warn("⚠️ Stale internal MCP handle captured. Wiping container allocation pool...");
-        await cleanUpMcpClient();
-      }
-    }
+  const baseAppUrl = process.env.MCP_SERVER_APP_URL || "http://localhost:3000";
 
-    const baseAppUrl = process.env.MCP_SERVER_APP_URL || "http://localhost:3000";
+  // If a connection already exists, reuse it instead of creating a new one on every request
+  if (mcpClientInstance) {
+    return mcpClientInstance;
+  }
+  
+  // Instantiating standard 2025 compliant stream-polling endpoint transport layers
+  const transport = new StreamableHTTPClientTransport(
+    new URL(`${baseAppUrl}/api/mcp-server-remote/mcp-doc-server`),
+    { timeout: 30000 } // 30 seconds timeout for long-polling
+  )
 
-    const client = new McpClient(
-      { name: "nextjs-agent-inference-client", version: "1.0.0" },
-      { url: `${baseAppUrl}/api/mcp-server-remote/mcp-doc-server` }
+  // Suppress expected transient drops during handshake adjustments
+    transport.onerror = (err) => {
+      console.log("[MCP Transport Reconnecting/Polling State Change Trace]");
+  };
+  
+   const mcpClient = new McpClient(
+      { name: "agentic-aggregator-client", version: "1.0.0" },
+      { versionNegotiation: { mode: "legacy" } } // Match the standard fallback profile configuration
     );
 
-    sharedMcpClient = client;
-    return sharedMcpClient;
-
-  } catch (error) {
-    console.error("Initialization crash inside native MCP pipeline:", error);
-    await cleanUpMcpClient();
-    throw error;
-  }
+  // Establish persistent architectural connection structures
+  await mcpClient.connect(transport);
+  
+  // Cache it globally for subsequent calls
+  mcpClientInstance = mcpClient;
+  
+  return mcpClientInstance;
 }
-
-async function cleanUpMcpClient() {
-  try {
-    if (sharedMcpClient) await sharedMcpClient.close();
-  } catch (err) {}
-  sharedMcpClient = null;
-  }
 
 // =================================================================
 // 🚀 AGENTIC AGGREGATION & EXECUTION ROUTE
@@ -122,8 +118,6 @@ export async function POST(req: NextRequest) {
   if (req.method !== "POST") {
     return NextResponse.json({ message: "Method not Allowed" }, { status: 405 });
   }
-
-  const mcpClientInstance = await getConnectedMcpClient();
 
   try {
     const { query } = await req.json();
@@ -177,10 +171,11 @@ export async function POST(req: NextRequest) {
       { role: "user", content: query }
     ];
 
-    // 3. Dynamically read schemas from our independent server via the protocol
-    const serverSchemaInventory = await mcpClientInstance.listTools();
-    const activeToolsList = serverSchemaInventory.tools || [];
-
+    // 3. 🟢 FIXED: Dynamically read tool definitions via manual JSON-RPC request helper
+    const mcpClient = await getMcpClient();
+    const rawToolsResponse = await mcpClient.listTools();
+    const activeToolsList = rawToolsResponse.tools || [];
+    
     const formattedToolsForGroq = activeToolsList.map((tool) => ({
       type: "function" as const,
       function: {
