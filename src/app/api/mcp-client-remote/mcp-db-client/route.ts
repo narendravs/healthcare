@@ -69,8 +69,20 @@ async function getConnectedMcpClient() {
       }
     }
 
-    // Identify internal/external absolute server root context
-  const baseAppUrl = process.env.MCP_SERVER_APP_URL || "http://localhost:3000";
+    // Determine url safely based on environment
+      let baseAppUrl = process.env.MCP_SERVER_APP_URL;
+
+      if (!baseAppUrl) {
+        if (process.env.VERCEL_URL) {
+          // Vercel auto-provides VERCEL_URL but drops the protocol prefix
+          baseAppUrl = `https://${process.env.VERCEL_URL}`;
+        } else {
+          // Local development fallback
+          baseAppUrl = "http://127.0.0.1:3000";
+        }
+      }
+
+      console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
 
     const transport = new StreamableHTTPClientTransport(
      new URL(`${baseAppUrl}/api/mcp-server-remote/mcp-db-server`),
