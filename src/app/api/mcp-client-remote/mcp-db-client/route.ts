@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
-import { Client as McpClient } from "@modelcontextprotocol/client";
+import { Client as McpClient, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import Groq from "groq-sdk";
 
 const groq = new Groq();
@@ -72,13 +72,25 @@ async function getConnectedMcpClient() {
     // Identify internal/external absolute server root context
   const baseAppUrl = process.env.MCP_SERVER_APP_URL || "http://localhost:3000";
 
-    const client = new McpClient(
-      { name: "nextjs-inference-client", version: "1.0.0" },
-      { url: `${baseAppUrl}/api/mcp-server-remote/mcp-db-server` } // Natively targets the server endpoint
+    const transport = new StreamableHTTPClientTransport(
+     new URL(`${baseAppUrl}/api/mcp-server-remote/mcp-db-server`),
+    { timeout: 30000 } // 30 seconds timeout for long-polling
     );
 
+    // Suppress expected transient drops during handshake adjustments
+        transport.onerror = (err) => {
+          console.log("[MCP Transport Reconnecting/Polling State Change Trace]");
+      };
+      
+       const mcpClient = new McpClient(
+          { name: "agentic-aggregator-client", version: "1.0.0" },
+          { versionNegotiation: { mode: "legacy" } } // Match the standard fallback profile configuration
+        );
     
-    sharedMcpClient = client;
+      // Establish persistent architectural connection structures
+      await mcpClient.connect(transport);
+    
+    sharedMcpClient = mcpClient;
     return sharedMcpClient;
 
   } catch (error) {
@@ -198,13 +210,24 @@ export async function POST(req: NextRequest) {
     // Process tool execution if requested by the LLM
     if (choice.tool_calls && choice.tool_calls.length > 0) {
       const toolCall = choice.tool_calls[0];
-      
+      const toolName = toolCall.function.name; // e.g., "validate_rag_patient"
+
+      // 🗺️ Map your actual backend tool names to clean human-readable Table/Schema Names
+      let tableName = "System Ledger";
+      if (toolName === "validate_rag_patient") tableName = "Patient Registry";
+      if (toolName === "validate_rag_appointment") tableName = "Appointments";
+      if (toolName === "validate_rag_doctor_by_name") tableName = "Doctor";
+      if (toolName === "validate_rag_auth") tableName = "User Accounts";
+
       const mcpResult = await mcpClient.callTool({
         name: toolCall.function.name,
         arguments: JSON.parse(toolCall.function.arguments),
       });
 
       const stringifiedToolPayload = mcpResult.content?.[0]?.text || "No records returned from database.";
+      
+      // 🔍 Verification Check: Verify we actually got real data back from the live system
+      const hasLiveRecords = stringifiedToolPayload !== "No records returned from database.";
 
       messages.push(choice);
       messages.push({
@@ -220,13 +243,16 @@ export async function POST(req: NextRequest) {
 
       // 🟩 CLEANUP: Return ONLY the natural language string answer response
       return NextResponse.json({
-        answer: finalizedResponse.choices[0].message.content || "No information processed."
+        answer: finalizedResponse.choices[0].message.content || "No information processed.",
+        isVerified: hasLiveRecords,
+        tableName: hasLiveRecords ? tableName : undefined
       }, { status: 200 });
     }
 
     // Return text directly here if no tools were called
     return NextResponse.json({
-      answer: choice.content || "No information processed."
+      answer: choice.content || "No information processed.",
+      isVerified: false 
     }, { status: 200 });
 
   } catch (error: any) {
