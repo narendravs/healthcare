@@ -79,7 +79,20 @@ let mcpClientInstance: McpClient | null = null;
 // =================================================================
 async function getMcpClient(): Promise<McpClient> {
 
-  const baseAppUrl = process.env.MCP_SERVER_APP_URL || "http://localhost:3000";
+   // Determine url safely based on environment
+  let baseAppUrl = process.env.MCP_SERVER_APP_URL;
+
+  if (!baseAppUrl) {
+    if (process.env.VERCEL_URL) {
+      // Vercel auto-provides VERCEL_URL but drops the protocol prefix
+      baseAppUrl = `https://${process.env.VERCEL_URL}`;
+    } else {
+      // Local development fallback
+      baseAppUrl = "http://127.0.0.1:3000";
+    }
+  }
+
+  console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
 
   // If a connection already exists, reuse it instead of creating a new one on every request
   if (mcpClientInstance) {
