@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer,isInitializeRequest,WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/server';
 import { Query, Client, Databases } from 'node-appwrite';
 import { z } from 'zod';
 import {
@@ -11,12 +11,44 @@ import {
 } from "@/lib/actions/appwrite.config";
 
 
+// A lightweight fallback implementation of an in-memory event store
+// (Replace with Redis if deploying to multi-instance serverless hosting layers)
+class SimpleEventStore{
+  private store = new Map<string, any[]>();
+  async getEvents(sid: string): Promise<any[]> {
+    return this.store.get(sid) || [];
+  }
+
+  async storeEvent(sid: string, ev: any): Promise<void> {
+    if (!this.store.has(sid)) {
+      this.store.set(sid, []);
+    }
+    this.store.get(sid)?.push(ev);
+  }
+  clear(sid:string){
+    this.store.delete(sid);
+  }
+}
 
 // Create the MCP Server
 const mcpServer = new McpServer({
   name: "hospital-production-db",
   version: "1.0.0"
 });
+
+
+const eventStore = new SimpleEventStore();
+
+// 🟢 FIX: Prevent Next.js from wiping out your connection maps during hot-reloads
+const globalMcpCache = global as unknown as {
+  _activeTransports?: Map<string, WebStandardStreamableHTTPServerTransport>;
+};
+
+if (!globalMcpCache._activeTransports) {
+  globalMcpCache._activeTransports = new Map();
+}
+
+const activeTransports = globalMcpCache._activeTransports;
 
 /**
  * TOOL 1: validate_rag_appointment
@@ -456,44 +488,106 @@ mcpServer.registerTool(
   }
 );
 
-// Streamable HTTP requires bridging standard Request loops to server payload processors
-export async function POST(req: NextRequest) {
-  try {
-    const jsonRpcRequest = await req.json();
+// ==========================================
+//  GLOBAL ROUTER & ACTIVE LIFE-CYCLE TRACKING
+// ==========================================
+
+/**
+ * Unified Next.js Handler routing protocol events
+ */
+export async function handleMcpRouting(req: NextRequest) {
     
-    // Create an ephemeral, stateless execution environment to resolve the query
-    let jsonRpcResponse: any = null;
+  // 1. Clone or extract the raw body content without prematurely consuming the stream
+  let bodyPayload: any = null;
+  if (req.method === "POST") {
+    try {
+      
+      // Read text first to safely prevent crashes on empty streams/pings
+      const textRaw = await req.clone().text();
+      if (textRaw && textRaw.trim().length > 0) {
+        bodyPayload = JSON.parse(textRaw);
+      }
+    } catch (e) {
+      console.error("Could not parse JSON payload body", e);
+    }
+  }
 
-    // Create a mock transport layer bridge to capture the server's response stream
-    const mockTransport = {
-      start: async () => {},
-      close: async () => {},
-      send: async (message: any) => {
-        jsonRpcResponse = message;
-      },
-      onmessage: undefined as ((message: any) => void) | undefined,
-      onclose: undefined as (() => void) | undefined,
-      onerror: undefined as ((error: Error) => void) | undefined,
-    };
+  const url = new URL(req.url);
+  
+  // DEEP SESSION EXTRACTION MATRIX
+  // StreamableHTTPClientTransport variations sometimes bury or pass the target ID differently
+  const mcpSessionId = 
+    req.headers.get("mcp-session-id") ||
+    url.searchParams.get("sessionId") || 
+    bodyPayload?.sessionId ||
+    bodyPayload?.params?.sessionId ||
+    bodyPayload?.params?.meta?.sessionId; // Fallback check for proxy layers
 
-    // Bind our server to the transport execution framework
-    await mcpServer.connect(mockTransport);
+  console.error(`[MCP Routing Debug] Extracted SessionID: "${mcpSessionId}" | Method: ${req.method}`);
 
-    // Push the raw incoming JSON-RPC payload directly into the MCP engine processor
-    if (mockTransport.onmessage) {
-      await mockTransport.onmessage(jsonRpcRequest);
+  // Case A: Existing stream connection matching an active transport session
+  if (mcpSessionId && activeTransports.has(mcpSessionId)) {
+    const transport = activeTransports.get(mcpSessionId)!;
+    
+        const requestOptions: RequestInit = {
+        method: req.method,
+        headers: req.headers,
+      };
+
+      if (req.method !== "GET" && req.method !== "HEAD" && bodyPayload) {
+        requestOptions.body = JSON.stringify(bodyPayload);
+      }
+  
+      const standardReq = new Request(req.url, requestOptions);
+      return await transport.handleRequest(standardReq);
     }
 
-    return NextResponse.json(jsonRpcResponse || { jsonrpc: "2.0", error: { code: -32603, message: "Internal server error processing tool execution request." }, id: jsonRpcRequest.id }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ jsonrpc: "2.0", error: { code: -32603, message: error.message }, id: null }, { status: 500 });
+  // Case B: Initialization Handshake
+  if (!mcpSessionId && isInitializeRequest(bodyPayload)) {
+    const newTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+      onsessioninitialized: (id) => {
+        console.error(`[MCP Server State] Session ${id} initialized successfully.`);
+        activeTransports.set(id, newTransport);
+      }
+    });
+
+    newTransport.onclose = () => {
+      // Clean up maps when connection teardowns fire
+      for (const [sid, trans] of activeTransports.entries()) {
+        if (trans === newTransport) {
+          activeTransports.delete(sid);
+          break;
+        }
+      }
+    };
+
+    await mcpServer.connect(newTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload)
+    });
+
+    return await newTransport.handleRequest(standardReq);
   }
+
+  if (mcpSessionId) {
+    return NextResponse.json({ jsonrpc: "2.0", error: { code: -32001, message: "Session expired or not found" }, id: null }, { status: 404 });
+  }
+  return NextResponse.json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: Session missing properties" }, id: null }, { status: 400 });
 }
 
 // GET handler returns server discovery schema parameters required by modern clients
-export async function GET() {
-  return NextResponse.json({
-    mcp_version: "2025-11-25",
-    capabilities: ["tools"],
-  }, { status: 200 });
+export async function GET(req: NextRequest) {
+ return handleMcpRouting(req);
+}
+
+/**
+ * Message Endpoint (POST)
+ * Client routes all JSON-RPC payload requests directly here.
+ */
+export async function POST(req: NextRequest) {
+  return handleMcpRouting(req);
 }
