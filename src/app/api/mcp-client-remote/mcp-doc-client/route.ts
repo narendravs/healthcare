@@ -72,7 +72,7 @@ const getSubstantiveQuery = (q: string): string => {
 };
 
 // Global MCP client instance for persistent connection reuse
-let mcpClientInstance: McpClient as any = null; 
+let mcpClientInstance: McpClient | null = null; 
 
 // =================================================================
 // 🛡️ PERSISTENT MCP CONNECTION WRAPPER POOL
