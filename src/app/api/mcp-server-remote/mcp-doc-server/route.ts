@@ -1,24 +1,61 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, isInitializeRequest,WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/server';
+
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import pdfParse from 'pdf-parse-fixed'; // 🛡️ Using fixed version to prevent path validation crash
 import mammoth from 'mammoth';
+import { NextResponse } from 'next/server';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { Transform } from 'stream';
+
 
 // 1. Resolve absolute paths reliably regardless of execution working directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Move up from your script directory directly into Next.js's public/uploads target folder
-const DOCUMENTS_DIRECTORY = path.resolve(__dirname, "../../public/uploads");
+const DOCUMENTS_DIRECTORY = path.resolve(__dirname, "../../public/documents");
 
 console.error(`[MCP Config] Target Uploads Directory resolved to: ${DOCUMENTS_DIRECTORY}`);
+
+// A lightweight fallback implementation of an in-memory event store
+// (Replace with Redis if deploying to multi-instance serverless hosting layers)
+class SimpleEventStore{
+  private store = new Map<string, any[]>();
+  async getEvents(sid: string): Promise<any[]> {
+    return this.store.get(sid) || [];
+  }
+
+  async storeEvent(sid: string, ev: any): Promise<void> {
+    if (!this.store.has(sid)) {
+      this.store.set(sid, []);
+    }
+    this.store.get(sid)?.push(ev);
+  }
+  clear(sid:string){
+    this.store.delete(sid);
+  }
+}
  
 const mcpServer = new McpServer({
   name: "hospital-document-validator",
   version: "1.0.0"
 });
+
+const eventStore = new SimpleEventStore();
+
+// 🟢 FIX: Prevent Next.js from wiping out your connection maps during hot-reloads
+const globalMcpCache = global as unknown as {
+  _activeTransports?: Map<string, WebStandardStreamableHTTPServerTransport>;
+};
+
+if (!globalMcpCache._activeTransports) {
+  globalMcpCache._activeTransports = new Map();
+}
+
+const activeTransports = globalMcpCache._activeTransports;
 
 /**
  * Robust Text Normalizer 
@@ -64,7 +101,31 @@ mcpServer.registerTool(
       };
     }
 
-    const targetFilePath = path.join(DOCUMENTS_DIRECTORY, source_filename);
+    // FORCE EVALUATION RIGHT HERE INSIDE THE RUNTIME BLOCK
+    const runtimeUploadsDir = path.join(process.cwd(), "public", "documents");
+    const targetFilePath = path.win32.normalize(path.join(runtimeUploadsDir, source_filename));
+
+    console.error(`[SYSTEM DEBUG] Normalizing file lookups to: "${targetFilePath}"`);
+
+      try {
+        if (fs.existsSync(runtimeUploadsDir)) {
+          const filesOnDisk = fs.readdirSync(runtimeUploadsDir);
+          console.error(`[SYSTEM DEBUG] Physical files found inside directory: ${JSON.stringify(filesOnDisk)}`);
+        } else {
+          console.error(`[SYSTEM DEBUG] CRITICAL: Node cannot even see the directory: "${runtimeUploadsDir}"`);
+        }
+      } catch (dirError) {
+        console.error(`[SYSTEM DEBUG] Failed to scan parent directory`, dirError);
+      }
+
+      // 3. Fallback to fs.accessSync which checks OS security handle tables directly
+      let fileExists = false;
+      try {
+        fs.accessSync(targetFilePath, fs.constants.F_OK);
+        fileExists = true;
+      } catch (e) {
+        fileExists = false;
+      }
 
     try {
       // Guard Clause: Ensure the file actually physically exists on the disk array
@@ -122,7 +183,7 @@ mcpServer.registerTool(
               isDocumentValid: true,
               sourceFileChecked: source_filename,
               reasoningMeta: "Successfully verified document text alignment against ground-truth disk records.",
-              verifiedText: cleanExtracted // 🟢 Explicitly returning the text to the LLM context
+              verifiedText: cleanExtracted // Explicitly returning the text to the LLM context
             })
           }]
         };
@@ -170,44 +231,107 @@ mcpServer.registerTool(
   }
 );
 
-// Streamable HTTP requires bridging standard Request loops to server payload processors
-export async function POST(req: NextRequest) {
-  try {
-    const jsonRpcRequest = await req.json();
+
+// ==========================================
+// 3. GLOBAL ROUTER & ACTIVE LIFE-CYCLE TRACKING
+// ==========================================
+
+/**
+ * Unified Next.js Handler routing protocol events
+ */
+export async function handleMcpRouting(req: NextRequest) {
     
-    // Create an ephemeral, stateless execution environment to resolve the query
-    let jsonRpcResponse: any = null;
+  // 1. Clone or extract the raw body content without prematurely consuming the stream
+  let bodyPayload: any = null;
+  if (req.method === "POST") {
+    try {
+      
+      // Read text first to safely prevent crashes on empty streams/pings
+      const textRaw = await req.clone().text();
+      if (textRaw && textRaw.trim().length > 0) {
+        bodyPayload = JSON.parse(textRaw);
+      }
+    } catch (e) {
+      console.error("Could not parse JSON payload body", e);
+    }
+  }
 
-    // Create a mock transport layer bridge to capture the server's response stream
-    const mockTransport = {
-      start: async () => {},
-      close: async () => {},
-      send: async (message: any) => {
-        jsonRpcResponse = message;
-      },
-      onmessage: undefined as ((message: any) => void) | undefined,
-      onclose: undefined as (() => void) | undefined,
-      onerror: undefined as ((error: Error) => void) | undefined,
-    };
+  const url = new URL(req.url);
+  
+  // DEEP SESSION EXTRACTION MATRIX
+  // StreamableHTTPClientTransport variations sometimes bury or pass the target ID differently
+  const mcpSessionId = 
+    req.headers.get("mcp-session-id") ||
+    url.searchParams.get("sessionId") || 
+    bodyPayload?.sessionId ||
+    bodyPayload?.params?.sessionId ||
+    bodyPayload?.params?.meta?.sessionId; // Fallback check for proxy layers
 
-    // Bind our server to the transport execution framework
-    await mcpServer.connect(mockTransport);
+  console.error(`[MCP Routing Debug] Extracted SessionID: "${mcpSessionId}" | Method: ${req.method}`);
 
-    // Push the raw incoming JSON-RPC payload directly into the MCP engine processor
-    if (mockTransport.onmessage) {
-      await mockTransport.onmessage(jsonRpcRequest);
+  // Case A: Existing stream connection matching an active transport session
+  if (mcpSessionId && activeTransports.has(mcpSessionId)) {
+    const transport = activeTransports.get(mcpSessionId)!;
+    
+        const requestOptions: RequestInit = {
+        method: req.method,
+        headers: req.headers,
+      };
+
+      if (req.method !== "GET" && req.method !== "HEAD" && bodyPayload) {
+        requestOptions.body = JSON.stringify(bodyPayload);
+      }
+  
+      const standardReq = new Request(req.url, requestOptions);
+      return await transport.handleRequest(standardReq);
     }
 
-    return NextResponse.json(jsonRpcResponse || { jsonrpc: "2.0", error: { code: -32603, message: "Internal server error processing tool execution request." }, id: jsonRpcRequest.id }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ jsonrpc: "2.0", error: { code: -32603, message: error.message }, id: null }, { status: 500 });
+  // Case B: Initialization Handshake
+  if (!mcpSessionId && isInitializeRequest(bodyPayload)) {
+    const newTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+      onsessioninitialized: (id) => {
+        console.error(`[MCP Server State] Session ${id} initialized successfully.`);
+        activeTransports.set(id, newTransport);
+      }
+    });
+
+    newTransport.onclose = () => {
+      // Clean up maps when connection teardowns fire
+      for (const [sid, trans] of activeTransports.entries()) {
+        if (trans === newTransport) {
+          activeTransports.delete(sid);
+          break;
+        }
+      }
+    };
+
+    await mcpServer.connect(newTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload)
+    });
+
+    return await newTransport.handleRequest(standardReq);
   }
+
+  if (mcpSessionId) {
+    return NextResponse.json({ jsonrpc: "2.0", error: { code: -32001, message: "Session expired or not found" }, id: null }, { status: 404 });
+  }
+  return NextResponse.json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: Session missing properties" }, id: null }, { status: 400 });
 }
 
 // GET handler returns server discovery schema parameters required by modern clients
-export async function GET() {
-  return NextResponse.json({
-    mcp_version: "2025-11-25",
-    capabilities: ["tools"],
-  }, { status: 200 });
+export async function GET(req: NextRequest) {
+ return handleMcpRouting(req);
+}
+
+/**
+ * Message Endpoint (POST)
+ * Client routes all JSON-RPC payload requests directly here.
+ */
+export async function POST(req: NextRequest) {
+  return handleMcpRouting(req);
 }
