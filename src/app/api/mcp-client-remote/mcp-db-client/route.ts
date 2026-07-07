@@ -51,10 +51,6 @@ async function getEmbeddingForQuery(query: string): Promise<number[]> {
   }
 }
 
-// Maintain a global variable to track connection states across invocations
-let sharedMcpClient: any = null;
-
-
 async function getConnectedMcpClient() {
   try {
         // Determine url safely based on environment
@@ -81,26 +77,13 @@ async function getConnectedMcpClient() {
       },
     });
     
-    sharedMcpClient = mcpClient;
-    return sharedMcpClient;
+    
+    return mcpClient;
 
   } catch (error) {
     console.error("Failed to initialize MCP Client:", error);
-    await cleanUpMcpClient();
     throw error;
   }
-}
-
-// Helper to safely wipe references so the next pass starts entirely fresh
-async function cleanUpMcpClient() {
-  try {
-    if (sharedMcpClient) {
-      await sharedMcpClient.close();
-    }
-  } catch (err) {
-    // Suppress secondary cleanup errors
-  }
-  sharedMcpClient = null;
 }
 
 export async function POST(req: NextRequest) {
