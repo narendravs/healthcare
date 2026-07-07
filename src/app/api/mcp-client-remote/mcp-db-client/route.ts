@@ -74,6 +74,10 @@ async function getConnectedMcpClient() {
         url: `${baseAppUrl}/api/mcp-server-remote/mcp-db-server`,
         // Allow the fetch runtime to resolve trailing slashes or routing rewrites
         redirect: 'follow',
+        // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
+       headers: async () => ({
+      "Content-Type": "application/json",
+    }),
       },
     });
     
