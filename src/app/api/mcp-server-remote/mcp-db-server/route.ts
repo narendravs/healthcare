@@ -10,26 +10,57 @@ import {
   users
 } from "@/lib/actions/appwrite.config";
 import { NextRequest, NextResponse } from "next/server";
+import { Redis } from '@upstash/redis';
 
 
-// A lightweight fallback implementation of an in-memory event store
-// (Replace with Redis if deploying to multi-instance serverless hosting layers)
-class SimpleEventStore{
-  private store = new Map<string, any[]>();
+// REDIS CONNECTION SETUP
+// Ensure these environment variables are defined in your deployment environment
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+});
+
+/**
+ * Optimized Distributed Event Store utilizing Redis
+ * Keeps multi-instance or serverless layers fully synchronized
+ */
+class RedisEventStore {
+  private getRedisKey(sid: string): string {
+    return `mcp:events:${sid}`;
+  }
+
   async getEvents(sid: string): Promise<any[]> {
-    return this.store.get(sid) || [];
+    try {
+      const data = await redis.get<any[]>(this.getRedisKey(sid));
+      return data || [];
+    } catch (e) {
+      console.error("[Redis Error] Failed to read events:", e);
+      return [];
+    }
   }
 
   async storeEvent(sid: string, ev: any): Promise<void> {
-    if (!this.store.has(sid)) {
-      this.store.set(sid, []);
+    try {
+      const key = this.getRedisKey(sid);
+      const currentEvents = await this.getEvents(sid);
+      currentEvents.push(ev);
+      
+      // Store back to Redis with a sliding window expiry window of 1 hour
+      await redis.set(key, currentEvents, { ex: 3600 });
+    } catch (e) {
+      console.error("[Redis Error] Failed to write event:", e);
     }
-    this.store.get(sid)?.push(ev);
   }
-  clear(sid:string){
-    this.store.delete(sid);
+
+  async clear(sid: string): Promise<void> {
+    try {
+      await redis.del(this.getRedisKey(sid));
+    } catch (e) {
+      console.error("[Redis Error] Failed to drop key:", e);
+    }
   }
 }
+
 
 // Create the MCP Server
 const mcpServer = new McpServer({
@@ -38,9 +69,9 @@ const mcpServer = new McpServer({
 });
 
 
-const eventStore = new SimpleEventStore();
+const eventStore = new RedisEventStore();
 
-// 🟢 FIX: Prevent Next.js from wiping out your connection maps during hot-reloads
+// Prevent local runtime instances from dropping context during fast-refresh compilation loops
 const globalMcpCache = global as unknown as {
   _activeTransports?: Map<string, WebStandardStreamableHTTPServerTransport>;
 };
@@ -526,14 +557,28 @@ export async function handleMcpRouting(req: NextRequest) {
 
   console.error(`[MCP Routing Debug] Extracted SessionID: "${mcpSessionId}" | Method: ${req.method}`);
 
+  // Check Redis to verify if this session exists globally across clusters
+  const globalSessionExists = mcpSessionId ? await redis.exists(`mcp:session:${mcpSessionId}`) : 0;
+
   // Case A: Existing stream connection matching an active transport session
-  if (mcpSessionId && activeTransports.has(mcpSessionId)) {
-    const transport = activeTransports.get(mcpSessionId)!;
+  if (mcpSessionId && globalSessionExists) {
+    let transport = activeTransports.get(mcpSessionId)!;
     
-        const requestOptions: RequestInit = {
-        method: req.method,
-        headers: req.headers,
-      };
+    // Serverless Sync Fallback: Reconstruct connection mapping if a sibling server initialized it
+    if (!transport) {
+      console.error(`[Serverless Sync] Hot-linking execution pipeline context for context ID: ${mcpSessionId}`);
+      transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: () => mcpSessionId,
+        onsessioninitialized: () => {}
+      });
+      await mcpServer.connect(transport);
+      activeTransports.set(mcpSessionId, transport);
+    }
+
+    const requestOptions: RequestInit = {
+      method: req.method,
+      headers: req.headers,
+    };
 
       if (req.method !== "GET" && req.method !== "HEAD" && bodyPayload) {
         requestOptions.body = JSON.stringify(bodyPayload);
@@ -543,6 +588,9 @@ export async function handleMcpRouting(req: NextRequest) {
       return await transport.handleRequest(standardReq);
     }
 
+    // Create an array to track async operations we must wait for before exiting the request pipeline
+  const pendingOperations: Promise<any>[] = [];
+  
   // Case B: Initialization Handshake
   if (!mcpSessionId && isInitializeRequest(bodyPayload)) {
     const newTransport = new WebStandardStreamableHTTPServerTransport({
@@ -550,6 +598,11 @@ export async function handleMcpRouting(req: NextRequest) {
       onsessioninitialized: (id) => {
         console.error(`[MCP Server State] Session ${id} initialized successfully.`);
         activeTransports.set(id, newTransport);
+        // Track session state cluster-wide in Redis with a 1 hour expiration window
+        // Push the promise to an outer tracking array instead of dangling an isolated async block
+        pendingOperations.push(
+          redis.set(`mcp:session:${id}`, "active", { ex: 3600 })
+        );
       }
     });
 
@@ -558,6 +611,11 @@ export async function handleMcpRouting(req: NextRequest) {
       for (const [sid, trans] of activeTransports.entries()) {
         if (trans === newTransport) {
           activeTransports.delete(sid);
+          // Handle unawaited promises safely in serverless environments
+          pendingOperations.push(
+            redis.del(`mcp:session:${sid}`),
+            eventStore.clear(sid)
+          );
           break;
         }
       }
@@ -571,7 +629,15 @@ export async function handleMcpRouting(req: NextRequest) {
       body: JSON.stringify(bodyPayload)
     });
 
-    return await newTransport.handleRequest(standardReq);
+    const response = await newTransport.handleRequest(standardReq);
+
+    // CRITICAL FOR SERVERLESS: Ensure all background Redis operations finish completely 
+    // before Next.js kills or freezes the execution runtime environment
+    if (pendingOperations.length > 0) {
+      await Promise.allSettled(pendingOperations);
+    }
+
+    return response;
   }
 
   if (mcpSessionId) {
