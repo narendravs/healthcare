@@ -76,6 +76,8 @@ async function getConnectedMcpClient() {
       transport: {
         type: 'http',
         url: `${baseAppUrl}/api/mcp-server-remote/mcp-db-server`,
+        // Allow the fetch runtime to resolve trailing slashes or routing rewrites
+        redirect: 'follow',
       },
     });
     
