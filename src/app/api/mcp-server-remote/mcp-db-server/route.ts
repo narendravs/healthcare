@@ -9,6 +9,7 @@ import {
   databases,
   users
 } from "@/lib/actions/appwrite.config";
+import { NextRequest, NextResponse } from "next/server";
 
 
 // A lightweight fallback implementation of an in-memory event store
