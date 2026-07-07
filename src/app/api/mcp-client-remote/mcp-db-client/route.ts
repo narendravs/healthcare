@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
-import { Client as McpClient, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import {createMCPClient } from '@ai-sdk/mcp';
 import Groq from "groq-sdk";
 
 const groq = new Groq();
@@ -51,25 +51,13 @@ async function getEmbeddingForQuery(query: string): Promise<number[]> {
   }
 }
 
-// Keep track of the transport and client globally
-let sharedMcpClient: McpClient | null = null;
+// Maintain a global variable to track connection states across invocations
+let sharedMcpClient: any = null;
 
 
 async function getConnectedMcpClient() {
   try {
-    // 🟩 FIX: If the client exists, verify it hasn't lost its connection state
-    if (sharedMcpClient) {
-      // Small hack/validation check: if listTools throws, or if internal transport isn't active, reset it
-      try {
-        await sharedMcpClient.listTools();
-        return sharedMcpClient; // Connection is warm and completely healthy!
-      } catch (e) {
-        console.warn("⚠️ Persistent MCP connection was found dead. Resetting connection pool...");
-        await cleanUpMcpClient();
-      }
-    }
-
-    // Determine url safely based on environment
+        // Determine url safely based on environment
       let baseAppUrl = process.env.MCP_SERVER_APP_URL;
 
       if (!baseAppUrl) {
@@ -82,25 +70,14 @@ async function getConnectedMcpClient() {
         }
       }
 
-      console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
+    console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
 
-    const transport = new StreamableHTTPClientTransport(
-     new URL(`${baseAppUrl}/api/mcp-server-remote/mcp-db-server`),
-    { timeout: 30000 } // 30 seconds timeout for long-polling
-    );
-
-    // Suppress expected transient drops during handshake adjustments
-        transport.onerror = (err) => {
-          console.log("[MCP Transport Reconnecting/Polling State Change Trace]");
-      };
-      
-       const mcpClient = new McpClient(
-          { name: "agentic-aggregator-client", version: "1.0.0" },
-          { versionNegotiation: { mode: "legacy" } } // Match the standard fallback profile configuration
-        );
-    
-      // Establish persistent architectural connection structures
-      await mcpClient.connect(transport);
+    const mcpClient = await createMCPClient({
+      transport: {
+        type: 'http',
+        url: `${baseAppUrl}/api/mcp-server-remote/mcp-db-server`,
+      },
+    });
     
     sharedMcpClient = mcpClient;
     return sharedMcpClient;
@@ -144,6 +121,8 @@ export async function POST(req: NextRequest) {
     const semanticContext = searchResult.matches
       ?.map((match: any) => match.metadata?.text || "")
       .join("\n") || "No historical context found.";
+
+    console.log("📝 Context loaded into LLM Window:\n", semanticContext);
 
     // --- Phase 2: Smart LLM Verification Loop ---
     const messages: any[] = [
@@ -195,19 +174,42 @@ export async function POST(req: NextRequest) {
       { role: "user", content: query }
     ];
 
-    // ✅ Fetch tools dynamically using the proper MCP Client API method
-    const mcpToolsResponse = await mcpClient.listTools();
-    const availableTools = mcpToolsResponse.tools || [];
+    // ✅ Grab AI SDK formatted tools directly from your client instance
+    const mcpTools = await mcpClient.tools();
+    
 
-    // Map tools correctly into the formatting schema Groq expects
-    const formattedTools = availableTools.map((tool) => ({
-      type: "function" as const,
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.inputSchema,
-      },
-    }));
+          // Transform Vercel AI SDK tool shapes to match Groq's rigid native structure
+      const formattedTools = Object.entries(mcpTools).map(([name, tool]: [string, any]) => {
+        // Deep clone the underlying parameters object
+        const sdkParams = tool.parameters || {};
+        
+        // Extract the true JSON Schema structure out of the Vercel AI SDK wrapper
+        const cleanProperties = JSON.parse(JSON.stringify(sdkParams.properties || sdkParams || {}));
+        const requiredFields = Array.isArray(sdkParams.required) ? sdkParams.required : [];
+
+        // Remove additionalProperties constraints entirely to prevent Groq 400s
+        for (const key of Object.keys(cleanProperties)) {
+          if (cleanProperties[key] && typeof cleanProperties[key] === 'object') {
+            delete cleanProperties[key].additionalProperties;
+          }
+        }
+
+        return {
+          type: "function" as const,
+          function: {
+            name: name,
+            description: tool.description,
+            parameters: {
+              type: "object",
+              properties: cleanProperties,
+              required: requiredFields
+            }
+          },
+        };
+      });
+
+// Diagnostic Log: Let's see what Groq is actually receiving as its manifest
+console.log("🛠️ Formatted Tools sent to Groq:", JSON.stringify(formattedTools, null, 2));
 
     const response = await groq.chat.completions.create({
       model: GROQ_MODEL,
@@ -231,14 +233,22 @@ export async function POST(req: NextRequest) {
       if (toolName === "validate_rag_doctor_by_name") tableName = "Doctor";
       if (toolName === "validate_rag_auth") tableName = "User Accounts";
 
-      const mcpResult = await mcpClient.callTool({
-        name: toolCall.function.name,
-        arguments: JSON.parse(toolCall.function.arguments),
-      });
+      // FIX 3: Target the tool from the SDK tools proxy mapping instead of falling back to .callTool()
+      const targetTool = mcpTools[toolName];
+      if (!targetTool) {
+        throw new Error(`Model requested tool "${toolName}" which is unavailable on the remote server.`);
+      }
 
-      const stringifiedToolPayload = mcpResult.content?.[0]?.text || "No records returned from database.";
+      const parsedArguments = JSON.parse(toolCall.function.arguments);
       
-      // 🔍 Verification Check: Verify we actually got real data back from the live system
+      // Execute via Vercel AI SDK runtime engine wrapper wrapper natively
+      const mcpResult = await targetTool.execute(parsedArguments);
+
+      // Handle output parsing cleanly regardless of string or raw structural payload arrays returned
+      const stringifiedToolPayload = typeof mcpResult === "string" 
+        ? mcpResult 
+        : JSON.stringify(mcpResult);
+      
       const hasLiveRecords = stringifiedToolPayload !== "No records returned from database.";
 
       messages.push(choice);
@@ -246,6 +256,15 @@ export async function POST(req: NextRequest) {
         role: "tool",
         tool_call_id: toolCall.id,
         content: stringifiedToolPayload,
+      });
+
+      // Inject formatting requirements ONLY at synthesis execution step
+      messages.push({
+        role: "system",
+        content: `You must present the tool output data to the user as a fluid, continuous reading paragraph narrative. 
+- Do not use bullet points, list items, bold key-value blocks, headers, or markdown tables.
+- Smoothly connect details together using natural transitional language phrases.
+- Completely omit any structural system ID hashes or raw backend token metadata from the resulting summary.`
       });
 
       const finalizedResponse = await groq.chat.completions.create({
