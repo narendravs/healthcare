@@ -66,12 +66,17 @@ async function getConnectedMcpClient() {
         }
       }
 
-    console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
+     // 🔑 Safely remove any trailing slashes to prevent double-slash (`//api/...`) errors
+    const sanitizedBaseUrl = baseAppUrl.replace(/\/+$/, "");
+    const serverUrl = `${sanitizedBaseUrl}/api/mcp-server-remote/mcp-db-server`;
+
+    console.log("🔌 MCP Client connecting to target backend infrastructure at:", serverUrl); 
+    
 
     const mcpClient = await createMCPClient({
       transport: {
-        type: 'http',
-        url: `${baseAppUrl}/api/mcp-server-remote/mcp-db-server`,
+        type: 'sse',
+        url: serverUrl,
         // Allow the fetch runtime to resolve trailing slashes or routing rewrites
         redirect: 'follow',
         // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
