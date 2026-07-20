@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import { promises as fs } from "fs";
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
 import { runDocumentProcess } from "@/embeddings/doc-embeddings/documentCloudEmbeddings.ts";
+import { put } from "@vercel/blob";
+import { embeddingTask } from "@/trigger/embeddingTask.ts";
+import { configure } from "@trigger.dev/sdk";
+
+// Configure the SDK globally at the module level
+configure({
+  secretKey: process.env.TRIGGER_SECRET_KEY,
+});
 export async function POST(req: NextRequest) {
   if (req.method != "POST") {
-    return NextResponse.json(
-      { message: "Method not Allowed" },
-      { status: 405 }
-    );
+    return NextResponse.json({ message: "Method not Allowed" }, { status: 405 });
   }
   try {
     console.log("entered into the route");
@@ -26,43 +32,63 @@ export async function POST(req: NextRequest) {
 
     console.log("File name uploaded", file.name);
 
-    // Sanitize the filename to make it URL-safe.
-    //const sanitizedFilename = sanitizeFilename(file.name);
-    // Convert the file Blob to a Buffer to save it to the file system.
-    const buffer = Buffer.from(await file.arrayBuffer());
+    let fileSource: string;
 
-    // Define the directory and filename for the uploaded file.
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    const filename = file.name;
+    // Check if we are running in production cloud or local development
+    if (process.env.NEXT_PUBLIC_FORCE_CLOUD_UPLOAD === "true") {
+      console.log("Cloud environment detected: Uploading to Vercel Blob...");
 
-    // Ensure the upload directory exists.
-    await fs.mkdir(uploadDir, { recursive: true });
+      // 1. Upload the raw stream directly to your private Vercel Blob store
+      const blob = await put(file.name, file.stream(), {
+        access: "private",
+        allowOverwrite: true,
+        addRandomSuffix: true,
+        // 🌟 Manually forcing the token here completely kills the OIDC check!
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
 
-    // Construct the full file path.
-    const filePath = path.join(uploadDir, filename);
+      // 2. The target source becomes the secure cloud absolute URL string
+      fileSource = blob.url;
+      // 🌟 PRODUCTION / CLOUD PATHWAY
+      // Kick off the heavy background task via Trigger.dev's cloud runners
+      const handle = await embeddingTask.trigger({ fileSource });
+      console.log(`Cloud background pipeline triggered. Task ID: ${handle.id}`);
+    } else {
+      console.log("Local environment detected: Saving to public disk...");
 
-    // Write the file to disk.
-    await fs.writeFile(filePath, buffer);
+      // Fallback: Write file to public/uploads directory for local testing
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
 
-    // Log the path of the written file for debugging purposes.
-    console.log(`File successfully written to: ${filePath}`);
+      const uploadDir = path.join(process.cwd(), "public", "uploads");
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
 
-    //Sending the file path to the rundocumnet method
-    runDocumentProcess(filename);
+      const localPath = path.join(uploadDir, file.name);
+      await writeFile(localPath, buffer);
+
+      fileSource = localPath;
+      // 💻 LOCAL DEVELOPMENT PATHWAY
+      // Since your local terminal doesn't have a 10-second timeout, you can run it
+      // locally. We drop the 'await' so it runs asynchronously in the background
+      // without blocking this route's JSON response!
+      runDocumentProcess(file.name).catch((err) => {
+        console.error("Local background embedding failed:", err);
+      });
+      console.log("Local background processing started directly on your machine.");
+    }
 
     // Send a success response immediately. The user gets this response while
     // the document processing is happening in the background.
     return NextResponse.json({
       message:
         "Document Uploaded Successfully. It is being processed and will be ready for chat in about 10 minutes.",
-      filePath: `/uploads/${filename}`,
+      filePath: fileSource,
     });
   } catch (error) {
     console.error("Error uploading file:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 /**
