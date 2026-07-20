@@ -77,13 +77,10 @@ async function getConnectedMcpClient() {
         // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
        headers: async () => ({
       "Content-Type": "application/json",
-    }),
-      },
-    });
-    
-    
+      }),
+    },
+  });
     return mcpClient;
-
   } catch (error) {
     console.error("Failed to initialize MCP Client:", error);
     throw error;
