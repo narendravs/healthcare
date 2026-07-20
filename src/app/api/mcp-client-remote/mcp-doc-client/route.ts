@@ -5,8 +5,7 @@ import path from "node:path";
 import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
 
-// Official Model Context Protocol SDK Client Imports
-import { Client as McpClient, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import {createMCPClient } from '@ai-sdk/mcp';
 
 
 // Initialize Groq Cloud Engine
@@ -71,57 +70,53 @@ const getSubstantiveQuery = (q: string): string => {
   return q;
 };
 
-// Global MCP client instance for persistent connection reuse
-let mcpClientInstance: McpClient | null = null; 
+// Global MCP client instance pool for persistent connection reuse
+let mcpClientInstance: any = null;
 
 // =================================================================
 // 🛡️ PERSISTENT MCP CONNECTION WRAPPER POOL
 // =================================================================
-async function getMcpClient(): Promise<McpClient> {
+async function getMcpClient(): Promise<any> {
 
-   // Determine url safely based on environment
-  let baseAppUrl = process.env.MCP_SERVER_APP_URL;
-
-  if (!baseAppUrl) {
-    if (process.env.VERCEL_URL) {
-      // Vercel auto-provides VERCEL_URL but drops the protocol prefix
-      baseAppUrl = `https://${process.env.VERCEL_URL}`;
-    } else {
-      // Local development fallback
-      baseAppUrl = "http://127.0.0.1:3000";
-    }
-  }
-
-  console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
-
-  // If a connection already exists, reuse it instead of creating a new one on every request
+  // 🟢 FIX: Return cached version if already initialized globally
   if (mcpClientInstance) {
     return mcpClientInstance;
   }
-  
-  // Instantiating standard 2025 compliant stream-polling endpoint transport layers
-  const transport = new StreamableHTTPClientTransport(
-    new URL(`${baseAppUrl}/api/mcp-server-remote/mcp-doc-server`),
-    { timeout: 30000 } // 30 seconds timeout for long-polling
-  )
 
-  // Suppress expected transient drops during handshake adjustments
-    transport.onerror = (err) => {
-      console.log("[MCP Transport Reconnecting/Polling State Change Trace]");
-  };
-  
-   const mcpClient = new McpClient(
-      { name: "agentic-aggregator-client", version: "1.0.0" },
-      { versionNegotiation: { mode: "legacy" } } // Match the standard fallback profile configuration
-    );
+  try {
+        // Determine url safely based on environment
+      let baseAppUrl = process.env.MCP_SERVER_APP_URL;
 
-  // Establish persistent architectural connection structures
-  await mcpClient.connect(transport);
-  
-  // Cache it globally for subsequent calls
-  mcpClientInstance = mcpClient;
-  
-  return mcpClientInstance;
+      if (!baseAppUrl) {
+        if (process.env.VERCEL_URL) {
+          // Vercel auto-provides VERCEL_URL but drops the protocol prefix
+          baseAppUrl = `https://${process.env.VERCEL_URL}`;
+        } else {
+          // Local development fallback
+          baseAppUrl = "http://127.0.0.1:3000";
+        }
+      }
+
+    console.log("🔌 MCP Client connecting to target backend infrastructure at:", baseAppUrl);
+
+    const mcpClient = await createMCPClient({
+      transport: {
+        type: 'http',
+        url: `${baseAppUrl}/api/mcp-server-remote/mcp-doc-server`,
+        // Allow the fetch runtime to resolve trailing slashes or routing rewrites
+        redirect: 'follow',
+        // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
+       headers: async () => ({
+      "Content-Type": "application/json",
+      }),
+    },
+    });
+    mcpClientInstance = mcpClient;
+    return mcpClient;
+  } catch (error) {
+    console.error("Failed to initialize MCP Client:", error);
+    throw error;
+  }
 }
 
 // =================================================================
@@ -186,33 +181,72 @@ export async function POST(req: NextRequest) {
 
     // 3. 🟢 FIXED: Dynamically read tool definitions via manual JSON-RPC request helper
     const mcpClient = await getMcpClient();
+     
     const rawToolsResponse = await mcpClient.listTools();
-    const activeToolsList = rawToolsResponse.tools || [];
-    
-    const formattedToolsForGroq = activeToolsList.map((tool) => ({
-      type: "function" as const,
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.inputSchema,
-      },
-    }));
 
-    // 4. FIRST PASS: Send parameters to Groq to extract functional values
+      const toolsArray = Array.isArray(rawToolsResponse) 
+    ? rawToolsResponse 
+    : (rawToolsResponse.tools || []);
+
+    const formattedTools = toolsArray.map((tool: any) => {
+      // 🟢 FIX: Official MCP schema places parameters under 'inputSchema'
+      const baseSchema = tool.inputSchema || tool.parameters || {};
+
+      const cleanProperties = baseSchema.properties 
+        ? JSON.parse(JSON.stringify(baseSchema.properties)) 
+        : {};
+        
+      const requiredFields = Array.isArray(baseSchema.required) ? baseSchema.required : [];
+
+      // Groq strict cleanup
+      for (const key of Object.keys(cleanProperties)) {
+        if (cleanProperties[key] && typeof cleanProperties[key] === 'object') {
+          delete cleanProperties[key].additionalProperties;
+          if (cleanProperties[key].description === "") {
+            delete cleanProperties[key].description;
+          }
+        }
+      }
+
+      return {
+        type: "function" as const,
+        function: {
+          // Use tool.name directly from the array element
+          name: tool.name,
+          description: tool.description || `Execute ${tool.name}`,
+          parameters: {
+            type: "object",
+            properties: cleanProperties,
+            required: requiredFields
+          }
+        }
+      };
+    });
+
+    // Diagnostic Log: Inspect this in your server console!
+    console.log("🛠️ Formatted Tools sent to Groq:", JSON.stringify(formattedTools, null, 2));
+    
+        // 4. FIRST PASS: Send parameters to Groq to extract functional values
     console.log("[Groq Pass 1] Routing query context to extract document tools arguments...");
     const initialCompletion = await groq.chat.completions.create({
       model: GROQ_MODEL,
       messages,
-      tools: formattedToolsForGroq,
+      tools: formattedTools,
       tool_choice: "auto"    
     });
 
     const primaryChoiceMessage = initialCompletion.choices[0].message;
-
+   
     console.log("Groq Primary Choice Message:", primaryChoiceMessage);
+
+    console.log("3. Model routing decision response received.");
+    console.log(` -> Does the model want to call a tool?: ${!!primaryChoiceMessage.tool_calls}`);
 
     //5. Check if Groq decided to execute our Independent Validation Tool
     if (primaryChoiceMessage.tool_calls && primaryChoiceMessage.tool_calls.length > 0) {
+
+      console.log(` -> Model chosen tool name: ${primaryChoiceMessage.tool_calls[0].function.name}`);
+
       const activeToolCall = primaryChoiceMessage.tool_calls[0];
       const parsedArguments = JSON.parse(activeToolCall.function.arguments);
 
@@ -224,12 +258,17 @@ export async function POST(req: NextRequest) {
 
       console.log(`[MCP Invocation] Executing standalone tool: ${activeToolCall.function.name}`);
       
-      const fileSystemToolResult = await mcpClientInstance.callTool({
+      const fileSystemToolResult = await mcpClient.callTool({
         name: activeToolCall.function.name,
         arguments: sanitizedArguments, // Using the sanitized argument structure safely
       });
 
-      const toolPayloadString = fileSystemToolResult.content?.[0]?.text || '{"isDocumentValid": false}';
+      const contentItem = fileSystemToolResult.content?.[0];
+      let toolPayloadString = '{"isDocumentValid": false}';
+
+      if (contentItem && contentItem.type === "text") {
+        toolPayloadString = contentItem.text;
+      }
 
       console.log(`[MCP Tool Result] ${toolPayloadString}`);
 
