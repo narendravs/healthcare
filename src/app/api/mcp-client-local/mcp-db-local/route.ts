@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
-import { Client as McpClient, StdioClientTransport } from "@modelcontextprotocol/client";
+import { Client as McpClient } from "@modelcontextprotocol/client";
+import {StdioClientTransport} from "@modelcontextprotocol/client/stdio";
 import Groq from "groq-sdk";
 
 const groq = new Groq();
