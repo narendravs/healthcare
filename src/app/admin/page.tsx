@@ -10,10 +10,10 @@ const AdminPage = async () => {
   const appointments = await getRecentAppointmentList();
 
   return (
-    <div className="container mx-auto flex min-w-full flex-col space-y-14">
+    <div className="container flex min-w-full flex-col space-y-14 px-4 sm:px-6 lg:px-8">
       <Header />
 
-      <main className="admin-main container">
+      <main className="admin-main">
         <section className="w-full space-y-4">
           <h1 className="header">Welcome To Admin Dashboard</h1>
         </section>
