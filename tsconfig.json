@@ -30,7 +30,8 @@
       "@/types/*": ["./src/types/*"],
       "@/embeddings/*": ["./src/embeddings/*"],
       "@/tools/*": ["./src/tools/*"],
-      "@/mcp-server/*": ["./src/mcp-server/*"]
+      "@/mcp-server/*": ["./src/mcp-server/*"],
+      "@/trigger/*": ["./src/trigger/*"]
     }
   },
   // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat
