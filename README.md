@@ -30,6 +30,8 @@ CarePulse is a modern, full-stack healthcare management platform designed to str
 - **Embeddings Providers:** Hugging Face Transformers & Silicon Cloud / OpenAI
 - **Context Protocol Layer:** Model Context Protocol (MCP) Client/Server Specification
 - **Session State Cache:** [Upstash Redis](https://upstash.com/)
+- **Background Task Processing:** [Trigger.dev](https://trigger.dev/)
+- **Blob Storage:** [Vercel Blob Storage](https://vercel.com/docs/storage/vercel-blob)
 - **Form Management:** [React Hook Form](https://react-hook-form.com/)
 - **Schema Validation:** [Zod](https://zod.dev/)
 
@@ -65,13 +67,12 @@ Follow these instructions to get a copy of the project up and running on your lo
 
     ```dotenv
     # ==================================================
-    #        REQUIRED ENVIRONMENT VARIABLES
+    #         REQUIRED ENVIRONMENT VARIABLES
     # ==================================================
 
     # -----------------------------------------------
     # 1. Appwrite Database & API Configuration
     # -----------------------------------------------
-    # Get these credentials from your Appwrite project dashboard.
     NEXT_PUBLIC_ENDPOINT="[Your Appwrite Endpoint URL]"
     PROJECT_ID="[Your Appwrite Project ID]"
     API_KEY="[Your Appwrite API Key]"
@@ -80,72 +81,101 @@ Follow these instructions to get a copy of the project up and running on your lo
     DOCTOR_COLLECTION_ID="[Your Doctor Collection ID]"
     APPOINTMENT_COLLECTION_ID="[Your Appointment Collection ID]"
     NEXT_PUBLIC_BUCKET_ID="[Your Appwrite Storage Bucket ID]"
+    NEXT_PUBLIC_BUCKET_URL="[Your Appwrite Bucket File URL]"
+    NEXT_PUBLIC_STORAGE_ENDPOINT="[Your Appwrite Storage Endpoint]"
     NEXT_PUBLIC_ADMIN_PASSKEY="[A Secret Passkey for Admin Access]"
 
     # -----------------------------------------------
     # 2. AI Model & Embedding Pipeline Configuration
     # -----------------------------------------------
-    # OpenAI Configuration for core orchestration LLM usage
     OPENAI_API_KEY="[Your OpenAI API Key]"
-    # Groq API key for high-speed open-source inference models (e.g., Llama-3)
     GROQ_API_KEY="[Your Groq API Key]"
-    # Cloud-based optimized embedding provider credentials
+    GOOGLE_API_KEY="[Your Google Gemini API Key]"
     CLOUD_SILICON_EMBEDDING_API_KEY="[Your Silicon Cloud Embeddings API Key]"
+
+    # Set to "true" to use cloud-based embeddings, or "false" to use local CPU-based embeddings
+    USE_CLOUD_EMBEDDINGS=true
 
     # -----------------------------------------------
     # 3. Vector Database Indexing (Pinecone)
     # -----------------------------------------------
     PINECONE_API_KEY="[Your Pinecone API Key]"
 
-    # For Document Search (unstructured medical paperwork, PDFs)
+    # Document Vector Indices (Unstructured Medical Files / Standard & Cloud)
     PINECONE_DOC_INDEX_NAME="[Pinecone Document Index Name]"
     PINECONE_DOC_INDEX_HOST="[Pinecone Document Index Host URL]"
     PINECONE_DOC_INDEX_NAME_SPACE="[Pinecone Document Namespace]"
 
-    # For Database Search (semantic record mappings, patient lookups)
-    PINECONE_DB_INDEX_NAME="[Pinecone DB Index Name]"
-    PINECONE_DB_INDEX_HOST="[Pinecone DB Index Host URL]"
-    PINECONE_DB_INDEX_NAME_SPACE="[Pinecone DB Namespace]"
+    PINECONE_CLOUD_DOC_INDEX_NAME="[Pinecone Cloud Document Index Name]"
+    PINECONE_CLOUD_DOC_INDEX_HOST="[Pinecone Cloud Document Index Host URL]"
+    PINECONE_CLOUD_DOC_INDEX_NAME_SPACE="[Pinecone Cloud Document Namespace]"
+
+    # Database Vector Indices (Semantic Record Mappings / Local & Cloud)
+    PINECONE_LOCAL_DB_INDEX_NAME="[Pinecone Local DB Index Name]"
+    PINECONE_LOCAL_DB_INDEX_HOST="[Pinecone Local DB Index Host URL]"
+    PINECONE_LOCAL_DB_INDEX_NAME_SPACE="[Pinecone Local DB Namespace]"
+
+    PINECONE_CLOUD_DB_INDEX_NAME="[Pinecone Cloud DB Index Name]"
+    PINECONE_CLOUD_DB_INDEX_HOST="[Pinecone Cloud DB Index Host URL]"
+    PINECONE_CLOUD_DB_INDEX_NAME_SPACE="[Pinecone Cloud DB Namespace]"
+
+    # Standard DB Index Alias Fallbacks
+    PINECONE_DB_INDEX_NAME="[Pinecone DB Fallback Index Name]"
+    PINECONE_DB_INDEX_HOST="[Pinecone DB Fallback Index Host URL]"
+    PINECONE_DB_INDEX_NAME_SPACE="[Pinecone DB Fallback Namespace]"
 
     # -----------------------------------------------
     # 4. Model Context Protocol (MCP) Configuration
     # -----------------------------------------------
-    # Configures endpoints and tokens for localized validation protocol servers
+    MCP_SERVER_APP_URL="http://localhost:3000"
     MCP_DB_SERVER_URL="[Your Appwrite MCP Server Connection Endpoint]"
     MCP_DOC_SERVER_URL="[Your Pinecone MCP Server Connection Endpoint]"
 
     # -----------------------------------------------
-    # 5. LangSmith Observability Configuration
+    # 5. Background Task Queue (Trigger.dev)
     # -----------------------------------------------
-    # Set to 'true' to enable telemetry, chain logging, and evaluation metrics tracking
+    TRIGGER_SECRET_KEY="[Your Trigger.dev Secret API Key]"
+
+    # -----------------------------------------------
+    # 6. LangSmith Observability Configuration
+    # -----------------------------------------------
     LANGSMITH_TRACING=true
-    LANGSMITH_ENDPOINT="[https://api.smith.langchain.com](https://api.smith.langchain.com)"
+    LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
     LANGSMITH_API_KEY="[Your LangSmith Secret API Key]"
     LANGSMITH_PROJECT="[Your LangSmith Project Name]"
 
     # -----------------------------------------------
-    # 6. Upstash Redis Configuration (Chat Session Memory)
+    # 7. Upstash Redis Configuration (Chat Session Memory)
     # -----------------------------------------------
-    # The REST base URL for your serverless Redis instance used to rehydrate LangChain agent chat history
     UPSTASH_REDIS_REST_URL="https://[your-database-name].upstash.io"
     UPSTASH_REDIS_REST_TOKEN="[Your Upstash Redis REST Token]"
 
     # -----------------------------------------------
-    # 7. Other Configuration
+    # 8. Vercel Blob Storage & Deployment Variables
     # -----------------------------------------------
-    # Timestamp File for Cron Job Persistence (e.g., a file path)
-    LAST_CHECKED_TIMESTAMP_FILE="[Path/to/timestamp_file.txt]"
-    # SERVER PORT (Commonly 3000 or 8080)
-    PORT=3000
+    BLOB_STORE_ID="[Your Vercel Blob Store ID]"
+    BLOB_READ_WRITE_TOKEN="[Your Vercel Blob Read/Write Token]"
+    VERCEL_OIDC_TOKEN="[Your Vercel OIDC Token]"
+
+    # -----------------------------------------------
+    # 9. Server & Environment Operational Settings
+    # -----------------------------------------------
+    LAST_CHECKED_TIMESTAMP_FILE="last_checked_timestamp.txt"
+    PORT=8000
+    NODE_ENV="production"
+    NEXT_PUBLIC_FORCE_CLOUD_UPLOAD="true"
     ```
 
-4.  **Run the development server:**
+4.  **Run the development server in Terminal 1:**
 
     ```bash
     npm run dev
     ```
 
     Open http://localhost:3000 with your browser to see the result.
+
+5. **Run Trigger.dev for local in Terminal 2 (Trigger.dev Background Worker):**
+   npx trigger.dev@latest dev --config ./trigger.config.ts    
 
 ## Usage
 
