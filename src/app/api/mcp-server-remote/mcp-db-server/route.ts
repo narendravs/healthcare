@@ -574,7 +574,7 @@ export async function handleMcpRouting(req: NextRequest) {
 
     // FIX 1: Manually bind the sessionId onto the internal transport instance
     // so handleRequest knows this instance belongs to the active session
-    (newTransport as any).sessionId = mcpSessionId;
+    (transport as any).sessionId = mcpSessionId;
 
       await mcpServer.connect(transport);
       activeTransports.set(mcpSessionId, transport);
