@@ -571,6 +571,11 @@ export async function handleMcpRouting(req: NextRequest) {
         sessionIdGenerator: () => mcpSessionId,
         onsessioninitialized: () => {}
       });
+
+    // FIX 1: Manually bind the sessionId onto the internal transport instance
+    // so handleRequest knows this instance belongs to the active session
+    (newTransport as any).sessionId = mcpSessionId;
+
       await mcpServer.connect(transport);
       activeTransports.set(mcpSessionId, transport);
     }
@@ -630,6 +635,11 @@ export async function handleMcpRouting(req: NextRequest) {
     });
 
     const response = await newTransport.handleRequest(standardReq);
+
+    // FIX 2: Handle notifications/initialized (which return empty/202 or 400 from transport)
+    if (bodyPayload?.method?.startsWith("notifications/") && response.status === 400) {
+        return new NextResponse(null, { status: 202 });
+     }
 
     // CRITICAL FOR SERVERLESS: Ensure all background Redis operations finish completely 
     // before Next.js kills or freezes the execution runtime environment
