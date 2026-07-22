@@ -10,7 +10,8 @@ import {createMCPClient } from '@ai-sdk/mcp';
 
 // Initialize Groq Cloud Engine
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+
+const GROQ_MODEL = "qwen/qwen3.6-27b";
 
 // Configure your Pinecone index and namespace
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
@@ -300,8 +301,11 @@ export async function POST(req: NextRequest) {
 
       console.log("Groq Final Completion:", finalCleanCompletion.choices[0].message.content);
 
+      const rawAnswer = finalCleanCompletion.choices[0].message.content || "No information processed by the validation pipeline.";
+      const cleanAnswer = sanitizeLLMContent(rawAnswer);
+
       return NextResponse.json({
-        result: finalCleanCompletion.choices[0].message.content || "No information processed by the validation pipeline.",
+        result: cleanAnswer,
         meta: {
           isValidated: isVerified,
           documentChecked: sourceFilename
@@ -318,4 +322,9 @@ export async function POST(req: NextRequest) {
     console.error("Critical Failure inside combined Agent Route:", error);
     return NextResponse.json({ message: "Internal Server Error", error: error.message }, { status: 500 });
   }
+}
+
+function sanitizeLLMContent(text: string): string {
+  if (!text) return "";
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
