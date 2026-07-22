@@ -102,7 +102,7 @@ Available Tools: {tool_names}`,
 
 const llm = new ChatGroq({
   apiKey: GROQ_APIKEY,
-  model: "meta-llama/llama-4-scout-17b-16e-instruct",
+  model: "qwen/qwen3.6-27b",
   temperature: 0,
 });
 
