@@ -479,6 +479,28 @@ export async function handleMcpRouting(req: NextRequest) {
     return response;
   }
 
+  // =================================================================
+  // Case C: Stateless Fallback for Single-Shot RPC Requests (listTools, callTool)
+  // =================================================================
+  if (!mcpSessionId && bodyPayload?.method) {
+    console.log(`[MCP Server] Executing stateless request for method: ${bodyPayload.method}`);
+    
+    // Instantiate a temporary, lightweight transport for this single invocation
+    const statelessTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+    });
+
+    await mcpServer.connect(statelessTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload),
+    });
+
+    return await statelessTransport.handleRequest(standardReq);
+  }
+
   if (mcpSessionId) {
     return NextResponse.json(
       {
