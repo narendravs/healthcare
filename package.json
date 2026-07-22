@@ -54,7 +54,7 @@
     "@radix-ui/react-toast": "^1.2.19",
     "@tailwindcss/postcss": "4.3.3",
     "@tanstack/react-table": "^8.21.3",
-    "@trigger.dev/sdk": "4.5.4",
+    "@trigger.dev/sdk": "4.5.5",
     "@types/react-datepicker": "^7.0.0",
     "@upstash/redis": "^1.38.0",
     "@vercel/blob": "^2.6.1",
