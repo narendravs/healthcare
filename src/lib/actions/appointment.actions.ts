@@ -20,13 +20,22 @@ export const createAppointment = async (
   appointment: CreateAppointmentParams
 ) => {
   console.log("Creating appointment:", appointment);
+
   try {
+    // 🔑 Destructure to separate Appwrite collection attributes from extra metadata
+    const { userId, ...appointmentPayload } = appointment as any;
+
     const newAppointment = await databases.createDocument(
       DATABASE_ID!,
       APPOINTMENT_COLLECTION_ID!,
       ID.unique(),
-      appointment
+      {
+        ...appointmentPayload,
+        // Ensure schedule is stored cleanly
+        schedule: new Date(appointment.schedule),
+      }
     );
+    
     revalidatePath("/admin");
     return parseStringify(newAppointment);
   } catch (error) {
