@@ -80,6 +80,7 @@ async function getConnectedMcpClient() {
         // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
        headers: async () => ({
       "Content-Type": "application/json",
+      "Accept": "application/json", // Forces JSON response instead of event-stream
       }),
     },
   });
@@ -289,12 +290,11 @@ console.log("🛠️ Formatted Tools sent to Groq:", JSON.stringify(formattedToo
     return NextResponse.json({ message: "Internal Server Error", error: error.message }, { status: 500 });
   } finally {
     if (mcpClient) {
-      try {
-        await mcpClient.close();
-      } catch (closeError) {
-        console.error("Failed to cleanly shut down MCP client connection:", closeError);
-      }
-    }
+     // 🔑 Attach .catch directly to the promise to intercept internal transport errors
+    await mcpClient.close().catch((err) => {
+      console.warn("MCP client closed (stateless cleanup ignored):", err?.message || err);
+    });
+   }
   }
 }
 
