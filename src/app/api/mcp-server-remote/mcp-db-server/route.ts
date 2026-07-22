@@ -92,8 +92,8 @@ mcpServer.registerTool(
   {
     description: "Validates a cached RAG appointment reference by resolving patient identity to live relational appointment records.",
     inputSchema: z.object({
-      name: z.string().describe("The name string of the patient (e.g., 'naren')"),
-      email: z.string().describe("The unique email address of the patient"),
+      name: z.string().optional().describe("The name string of the patient (e.g., 'naren')"),
+      email: z.string().optional().describe("The unique email address of the patient"),
     })
   },
   async ({ name, email }) => {
@@ -104,7 +104,7 @@ mcpServer.registerTool(
     console.error("================================================================\n");
 
     try {
-      const targetEmail = email.toLowerCase().trim();
+      const targetEmail = email?.toLowerCase().trim();
       console.error(`[MCP DB Query] Listing documents from PATIENT_COLLECTION_ID where email == "${targetEmail}"...`);
 
       // Step 1: Query the Patient Collection first to get the true Relational ID
@@ -520,6 +520,7 @@ mcpServer.registerTool(
   }
 );
 
+
 // ==========================================
 //  GLOBAL ROUTER & ACTIVE LIFE-CYCLE TRACKING
 // ==========================================
@@ -648,6 +649,28 @@ export async function handleMcpRouting(req: NextRequest) {
     }
 
     return response;
+  }
+
+  // =================================================================
+  // Case C: Stateless On-Demand Execution (FIX FOR VERCEL & HTTP CLIENTS)
+  // Handles tools/list, tools/call, etc., without requiring session handshake
+  // =================================================================
+  if (bodyPayload?.method) {
+    console.log(`[MCP Stateless] Handling method execution: ${bodyPayload.method}`);
+
+    const statelessTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+    });
+
+    await mcpServer.connect(statelessTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload),
+    });
+
+    return await statelessTransport.handleRequest(standardReq);
   }
 
   if (mcpSessionId) {
