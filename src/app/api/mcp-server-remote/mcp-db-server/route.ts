@@ -691,3 +691,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   return handleMcpRouting(req);
 }
+
+// Handle preflight CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, mcp-session-id",
+    },
+  });
+}
+
+// Handle session cleanup gracefully
+export async function DELETE() {
+  return new Response(null, { status: 200 });
+}
