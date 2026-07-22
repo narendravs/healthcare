@@ -406,9 +406,10 @@ export async function handleMcpRouting(req: NextRequest) {
         onsessioninitialized: () => {},
       });
 
-    // FIX 1: Manually bind the sessionId onto the internal transport instance
-    // so handleRequest knows this instance belongs to the active session
+    // 🔑 CRITICAL FIX: Set private initialization flags so the SDK accepts requests on new isolates
+      (transport as any)._sessionId = mcpSessionId;
       (transport as any).sessionId = mcpSessionId;
+      (transport as any)._initialized = true; // Prevents "Server not initialized" 400 error
       
       await mcpServer.connect(transport);
       activeTransports.set(mcpSessionId, transport);
