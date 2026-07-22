@@ -108,7 +108,8 @@ async function getMcpClient(): Promise<any> {
         redirect: 'follow',
         // 🟩 ADD THIS PROPERTY TO FIX CHIPS/SESSION ISSUES OVER HTTP PROTOCOLS:
        headers: async () => ({
-      "Content-Type": "application/json",
+         "Content-Type": "application/json",
+         "Accept": "application/json", // Forces JSON response instead of event-stream
       }),
     },
     });
