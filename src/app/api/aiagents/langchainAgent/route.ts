@@ -98,6 +98,7 @@ const agentExecutor = new AgentExecutor({
   agent,
   tools,
   handleParsingErrors: true,
+  returnIntermediateSteps: true, // 👈 CRITICAL: Exposes tool execution outputs
 });
 
 // Unified Message History Wrapper pointing directly to Redis
@@ -143,11 +144,30 @@ export async function POST(req: NextRequest) {
 
     console.log("Result from the API output:", result.output);
 
+    // 2. Extract tool execution flags from intermediateSteps
+    let shouldNavigate = false;
+    let targetRoute = null;
+
+    if (result.intermediateSteps && Array.isArray(result.intermediateSteps)) {
+    for (const step of result.intermediateSteps) {
+      // Check if navigate_to_admin or create_appointment tool was called
+      if (step.action?.tool === "navigate_to_admin") {
+        shouldNavigate = true;
+        targetRoute = "/admin";
+        break;
+      }
+    }
+  }
+
     if (process.env.LANGSMITH_TRACING === "true") {
       await lsClient.awaitPendingTraceBatches();
     }
     
-    return NextResponse.json({ output: result.output }, { status: 200 });
+    return NextResponse.json({
+      output: result.output,
+      action: shouldNavigate ? "navigate" : null,
+      targetRoute: targetRoute
+     }, { status: 200 });
   } catch (error) {
     console.error("Agent execution error:", error);
 
