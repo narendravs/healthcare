@@ -33,7 +33,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [dataType, setDataType] = useState<"database" | "documents" | "apicall">(type);
-  
+    
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -151,13 +151,18 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         try {
           const agentOutput = typeof data.output === 'string' ? data.output : "";
           console.log("2. String to be parsed:", agentOutput);
+          
+          // 🟢 FIXED: Check top-level JSON properties returned by your API
+          const isNavigateAction = data.action === "navigate" || data.targetRoute === "/admin";
+          console.log("3. Navigation Action is present:", isNavigateAction);
 
-          if (agentOutput.includes("successfully")) {
-            setIsPasscodeModalOpen(true);
+          if (data.action === "navigate") {
+            
             isNavigationAction = true;
             finalMessage = "Okay, I've created the appointment. Please enter the passcode to access the admin page.";
             
             setMessage((prevMsg) => [...prevMsg, { role: "bot", content: finalMessage }]);
+            setIsPasscodeModalOpen(true);
           }
         } catch (e) {
           console.error("Agent output parse handling exception:", e);
