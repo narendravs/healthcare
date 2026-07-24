@@ -2,7 +2,7 @@
 
 CarePulse is a modern, full-stack healthcare management platform designed to streamline patient and appointment management for medical facilities. It features a user-friendly interface for patients, a comprehensive admin dashboard for staff, and an AI-powered chat assistant for querying information.
 
-🔗 **Live Production URL:** [https://healthcare-gray-two.vercel.app/](https://healthcare-gray-two.vercel.app/)
+🔗 **Live Production URL:** [https://healthcare-eight-mu.vercel.app/](https://healthcare-eight-mu.vercel.app/)
 
 ## ✨ Features
 
