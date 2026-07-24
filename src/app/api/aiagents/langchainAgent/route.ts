@@ -49,49 +49,28 @@ const tools = [
 const prompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `You are a specialized Medical Appointment Coordinator. Your mission is to move the user through the booking funnel in a strict, non-repetitive sequence.
+`You are a specialized Medical Appointment Coordinator. Your mission is to move the user through the booking funnel in a strict, non-repetitive, step-by-step sequence.
 
 ### CONVERSATION FLOW (STRICT SEQUENCE):
-1. **Name & Identity:** 
-   - Ask for the user's full name. 
-   - Use the name to call 'get_user_by_name'.
-   - **Important:** If the user is not found, politely tell them they "need to register first" and stop.
-   - If found, silently call 'get_patient_details' using the 'userId' to get the 'patientId'. **Do not show these IDs to the user.**
+1. **Name & Identity:**
+   - Ask for full name -> call 'get_user_by_name'.
+   - If found, call 'get_patient_details' to retrieve 'patientId'. Keep IDs silent.
+2. **Doctor Selection:**
+   - Call 'get_doctor_list' -> ask user to choose.
+3. **Reason for Visit:**
+   - Ask for reason.
+4. **Schedule:**
+   - Ask for preferred date and time.
+5. **Additional Notes (MANDATORY STEP):**
+   - Once date/time is provided, ask: "Got it! Are there any additional notes or special requests you would like to add for the doctor?"
+6. **Creation & Redirect:**
+   - Only AFTER the user responds to Step 5 (even if they say "no" or "none"), execute 'create_appointment'.
+   - Immediately call 'navigate_to_admin'.
+   - Tell the user: "Successfully scheduled your appointment! Redirecting to the admin dashboard..."
 
-2. **Doctor Selection:** 
-   - Call 'get_doctor_list'. 
-   - Present the list of doctors and ask the user to "select the doctor by their corresponding number."
-
-3. **Reason for Visit:** 
-   - Ask: "What is the reason for your visit?"
-
-4. **Schedule:** 
-   - Ask: "What is your preferred date and time for the appointment?"
-
-5. **Additional Notes:** 
-   - Ask: "Are there any additional notes you would like to include?"
-
-### DATA COLLECTION & TOOL EXECUTION:
-You must remember the following data points to pass to the final tool:
-- **name:** (The full name provided by the user)
-- **userId:** (Retrieved from tool)
-- **patient:** (The '$id' retrieved from tool)
-- **primaryPhysician:** (The name of the doctor corresponding to the number chosen)
-- **reason:** (The user's input)
-- **schedule:** (The exact date/time from the user)
-- **note:** (The user's input)
-- **status:** "pending" (Always set this by default)
-
-### CRITICAL INSTRUCTIONS:
-- **Human-Friendly:** Do not show 'userId', 'patientId', or JSON code to the user. Talk like a real person.
-- **One at a Time:** Only ask the next question after the user has answered the previous one.
-- **Zero Repetition:** Check 'chat_history' to see what has already been answered. If a tool was already called successfully, move directly to the next step.
-### MANDATORY REDIRECTION CHAIN:
-As soon as 'create_appointment' returns success, you must execute a "Double Tool Call":
-1. You MUST immediately call 'navigate_to_admin' as your very next action.
-2. In the 'content' of the same turn you call 'navigate_to_admin', you should say: "Successfully scheduled your appointment! Redirecting to the admin dashboard..."
-
-CRITICAL: Do not provide a text response after 'create_appointment' unless it is accompanied by the 'navigate_to_admin' tool call. If you simply say "Redirecting" without calling the tool, the system will fail. Your output MUST include a tool_call to 'navigate_to_admin'.
+### CRITICAL RULES:
+- Never call 'create_appointment' until Step 5 (Notes) has been answered by the user.
+- Always respond in natural language. Never return raw JSON or blank strings to the user.
 
 Available Tools: {tool_names}`,
   ],
@@ -102,7 +81,7 @@ Available Tools: {tool_names}`,
 
 const llm = new ChatGroq({
   apiKey: GROQ_APIKEY,
-  model: "meta-llama/llama-4-scout-17b-16e-instruct",
+  model: "qwen/qwen3.6-27b",
   temperature: 0,
 });
 
@@ -119,6 +98,7 @@ const agentExecutor = new AgentExecutor({
   agent,
   tools,
   handleParsingErrors: true,
+  returnIntermediateSteps: true, // 👈 CRITICAL: Exposes tool execution outputs
 });
 
 // Unified Message History Wrapper pointing directly to Redis
@@ -138,25 +118,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { query, history, sessionId } = await req.json();
-    const toolNames = tools.map((tool) => tool.name).join(", ");
+    const { query, sessionId } = await req.json();
 
-    // OPTIONAL: If your frontend forces an absolute snapshot sync on load
-    if (history && history.length > 0) {
-      const activeRedisStore = getRedisChatHistory(sessionId);
-      const currentMessages = await activeRedisStore.getMessages();
-      
-      // Seed ONLY if Redis is currently pristine/empty to prevent performance lag
-      if (currentMessages.length === 0) {
-        for (const msg of history) {
-          if (msg.role === "user") {
-            await activeRedisStore.addUserMessage(msg.content);
-          } else {
-            await activeRedisStore.addAIChatMessage(msg.content);
-          }
-        }
-      }
+    // Add explicit validation guard
+    if (!sessionId) {
+      console.error("❌ API Error: sessionId is missing in request payload");
+      return NextResponse.json(
+        { error: "Bad Request: sessionId is required to maintain chat continuity." },
+        { status: 400 }
+      );
     }
+    
+    const toolNames = tools.map((tool) => tool.name).join(", ");
 
     // Run execution context. State changes automatically sync to Upstash via RunnableWrapper
     const result = await agentWithChatHistory.invoke(
@@ -171,11 +144,30 @@ export async function POST(req: NextRequest) {
 
     console.log("Result from the API output:", result.output);
 
+    // 2. Extract tool execution flags from intermediateSteps
+    let shouldNavigate = false;
+    let targetRoute = null;
+
+    if (result.intermediateSteps && Array.isArray(result.intermediateSteps)) {
+    for (const step of result.intermediateSteps) {
+      // Check if navigate_to_admin or create_appointment tool was called
+      if (step.action?.tool === "navigate_to_admin") {
+        shouldNavigate = true;
+        targetRoute = "/admin";
+        break;
+      }
+    }
+  }
+
     if (process.env.LANGSMITH_TRACING === "true") {
       await lsClient.awaitPendingTraceBatches();
     }
     
-    return NextResponse.json({ output: result.output }, { status: 200 });
+    return NextResponse.json({
+      output: result.output,
+      action: shouldNavigate ? "navigate" : null,
+      targetRoute: targetRoute
+     }, { status: 200 });
   } catch (error) {
     console.error("Agent execution error:", error);
 

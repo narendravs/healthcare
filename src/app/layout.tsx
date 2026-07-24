@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@/components/ThemeProvider";
-import  "./globals.css";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -12,10 +13,7 @@ export default function RootLayout({
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Hospital Management System</title>
-        <meta
-          name="description"
-          content="Manage hospital operations efficiently"
-        />
+        <meta name="description" content="Manage hospital operations efficiently" />
       </head>
       <body>
         <ThemeProvider
@@ -25,6 +23,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

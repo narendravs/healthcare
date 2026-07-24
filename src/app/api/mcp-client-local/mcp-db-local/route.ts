@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
-import { Client as McpClient, StdioClientTransport } from "@modelcontextprotocol/client";
+import { Client as McpClient } from "@modelcontextprotocol/client";
+import {StdioClientTransport} from "@modelcontextprotocol/client/stdio";
 import Groq from "groq-sdk";
 
 const groq = new Groq();
@@ -238,13 +239,13 @@ export async function POST(req: NextRequest) {
     console.error("Error in combined Inference Endpoint:", error);
     return NextResponse.json({ message: "Internal Server Error", error: error.message }, { status: 500 });
   } finally {
-    // if (mcpClient) {
-    //   try {
-    //     await mcpClient.close();
-    //   } catch (closeError) {
-    //     console.error("Failed to cleanly shut down MCP client connection:", closeError);
-    //   }
-    //   }
+    if (mcpClient) {
+      try {
+        await mcpClient.close();
+      } catch (closeError) {
+        console.error("Failed to cleanly shut down MCP client connection:", closeError);
+      }
+      }
     console.log("📥 Request transaction complete. Keeping connection pool alive.");
   }
 }

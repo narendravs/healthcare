@@ -33,7 +33,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [dataType, setDataType] = useState<"database" | "documents" | "apicall">(type);
-  
+    
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,25 +49,45 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
     try {
       // 1. DATABASE ROUTE
       if (dataType === "database") {
-        const response = await fetch(`/api/embeddings/search/mcp-db-server`, {
+        const response = await fetch(`/api/mcp-client-remote/mcp-db-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
         });
         const data = await response.json();
         if (data.answer) {
+          const isVerified = data?.isVerified;
+          const answer = data?.answer;
+          const tableName = data?.tableName || "Unknown Table";
+
+        let finalFormattedContent = "";
+
+          if (isVerified) {
+            // 🟢 CASE A: Data exists and is cleanly verified
+            const verificationBadge = `🟢 [Verified Ground-Truth Source: ${tableName}]\n`;
+            finalFormattedContent = `${verificationBadge}----------------------------------------\n${answer}`;
+          } else {
+            // 🔴 CASE B: Data does not exist in the table or verification failed
+            const verificationBadge = `🔴 [Data Source Notice: ${tableName}]\n`;
+            
+            // Create a highly human-readable, clear fallback response for the user
+            const userReadableFallback = `We searched the system, but no matching records could be found in the "${tableName}" database table. Please check your query parameters and try again.`;
+            
+            finalFormattedContent = `${verificationBadge}----------------------------------------\n${userReadableFallback}`;
+          }
+        
           setMessage((prevMsg) => [
             ...prevMsg,
             { 
               role: "bot", 
-              content: data.answer,
-              },
+              content: finalFormattedContent,
+              }
           ]);
         }
      }
       // 2. DOCUMENTS ROUTE (Now safely encapsulated within the try block)
       else if (dataType === "documents") {
-        const response = await fetch(`/api/embeddings/search/mcp-doc-server`, {
+        const response = await fetch(`/api/mcp-client-remote/mcp-doc-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
@@ -105,10 +125,16 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
       } 
       // 3. API CALL ROUTE
       else if (dataType === "apicall") {
+      // 🟩 FALLBACK: If state hasn't propagated, read directly from storage
+        const activeSessionId = (sessionId && sessionId.trim() !== "") ? sessionId : (typeof window !== "undefined" ? sessionStorage.getItem("active_chat_session") : null);
+      
+      if (!activeSessionId) {
+        throw new Error("Local session verification failed. Please refresh your browser.");
+      }
         const response = await fetch(`/api/aiagents/langchainAgent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: currentInput, sessionId: sessionId }),
+          body: JSON.stringify({ query: currentInput, sessionId: activeSessionId }),
         });
 
         if (!response.ok) {
@@ -125,13 +151,18 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         try {
           const agentOutput = typeof data.output === 'string' ? data.output : "";
           console.log("2. String to be parsed:", agentOutput);
+          
+          // 🟢 FIXED: Check top-level JSON properties returned by your API
+          const isNavigateAction = data.action === "navigate" || data.targetRoute === "/admin";
+          console.log("3. Navigation Action is present:", isNavigateAction);
 
-          if (agentOutput.includes("successfully")) {
-            setIsPasscodeModalOpen(true);
+          if (data.action === "navigate") {
+            
             isNavigationAction = true;
             finalMessage = "Okay, I've created the appointment. Please enter the passcode to access the admin page.";
             
             setMessage((prevMsg) => [...prevMsg, { role: "bot", content: finalMessage }]);
+            setIsPasscodeModalOpen(true);
           }
         } catch (e) {
           console.error("Agent output parse handling exception:", e);

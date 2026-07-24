@@ -7,7 +7,8 @@ import { pipeline } from "@xenova/transformers";
 import Groq from "groq-sdk";
 
 // Official Model Context Protocol SDK Client Imports
-import { Client as McpClient, StdioClientTransport } from "@modelcontextprotocol/client";
+import { Client as McpClient } from "@modelcontextprotocol/client";
+import {StdioClientTransport} from "@modelcontextprotocol/client/stdio";
 
 // Initialize Groq Cloud Engine
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });

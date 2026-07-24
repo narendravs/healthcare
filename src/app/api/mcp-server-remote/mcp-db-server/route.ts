@@ -1,4 +1,4 @@
-import { McpServer, StdioServerTransport } from '@modelcontextprotocol/server';
+import { McpServer,isInitializeRequest,WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/server';
 import { Query, Client, Databases } from 'node-appwrite';
 import { z } from 'zod';
 import {
@@ -9,7 +9,57 @@ import {
   databases,
   users
 } from "@/lib/actions/appwrite.config";
+import { NextRequest, NextResponse } from "next/server";
+import { Redis } from '@upstash/redis';
 
+
+// REDIS CONNECTION SETUP
+// Ensure these environment variables are defined in your deployment environment
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+});
+
+/**
+ * Optimized Distributed Event Store utilizing Redis
+ * Keeps multi-instance or serverless layers fully synchronized
+ */
+class RedisEventStore {
+  private getRedisKey(sid: string): string {
+    return `mcp:events:${sid}`;
+  }
+
+  async getEvents(sid: string): Promise<any[]> {
+    try {
+      const data = await redis.get<any[]>(this.getRedisKey(sid));
+      return data || [];
+    } catch (e) {
+      console.error("[Redis Error] Failed to read events:", e);
+      return [];
+    }
+  }
+
+  async storeEvent(sid: string, ev: any): Promise<void> {
+    try {
+      const key = this.getRedisKey(sid);
+      const currentEvents = await this.getEvents(sid);
+      currentEvents.push(ev);
+      
+      // Store back to Redis with a sliding window expiry window of 1 hour
+      await redis.set(key, currentEvents, { ex: 3600 });
+    } catch (e) {
+      console.error("[Redis Error] Failed to write event:", e);
+    }
+  }
+
+  async clear(sid: string): Promise<void> {
+    try {
+      await redis.del(this.getRedisKey(sid));
+    } catch (e) {
+      console.error("[Redis Error] Failed to drop key:", e);
+    }
+  }
+}
 
 
 // Create the MCP Server
@@ -17,6 +67,20 @@ const mcpServer = new McpServer({
   name: "hospital-production-db",
   version: "1.0.0"
 });
+
+
+const eventStore = new RedisEventStore();
+
+// Prevent local runtime instances from dropping context during fast-refresh compilation loops
+const globalMcpCache = global as unknown as {
+  _activeTransports?: Map<string, WebStandardStreamableHTTPServerTransport>;
+};
+
+if (!globalMcpCache._activeTransports) {
+  globalMcpCache._activeTransports = new Map();
+}
+
+const activeTransports = globalMcpCache._activeTransports;
 
 /**
  * TOOL 1: validate_rag_appointment
@@ -28,8 +92,8 @@ mcpServer.registerTool(
   {
     description: "Validates a cached RAG appointment reference by resolving patient identity to live relational appointment records.",
     inputSchema: z.object({
-      name: z.string().describe("The name string of the patient (e.g., 'naren')"),
-      email: z.string().describe("The unique email address of the patient"),
+      name: z.string().optional().describe("The name string of the patient (e.g., 'naren')"),
+      email: z.string().optional().describe("The unique email address of the patient"),
     })
   },
   async ({ name, email }) => {
@@ -40,7 +104,7 @@ mcpServer.registerTool(
     console.error("================================================================\n");
 
     try {
-      const targetEmail = email.toLowerCase().trim();
+      const targetEmail = email?.toLowerCase().trim();
       console.error(`[MCP DB Query] Listing documents from PATIENT_COLLECTION_ID where email == "${targetEmail}"...`);
 
       // Step 1: Query the Patient Collection first to get the true Relational ID
@@ -456,7 +520,192 @@ mcpServer.registerTool(
   }
 );
 
-// Standard Local Stdio Loop Hookup
-const transport = new StdioServerTransport();
-await mcpServer.connect(transport);
-console.error("Healthcare Multi-Table MCP Validator initialized via Stdio.");
+
+// ==========================================
+//  GLOBAL ROUTER & ACTIVE LIFE-CYCLE TRACKING
+// ==========================================
+
+/**
+ * Unified Next.js Handler routing protocol events
+ */
+export async function handleMcpRouting(req: NextRequest) {
+    
+  // 1. Clone or extract the raw body content without prematurely consuming the stream
+  let bodyPayload: any = null;
+  if (req.method === "POST") {
+    try {
+      
+      // Read text first to safely prevent crashes on empty streams/pings
+      const textRaw = await req.clone().text();
+      if (textRaw && textRaw.trim().length > 0) {
+        bodyPayload = JSON.parse(textRaw);
+      }
+    } catch (e) {
+      console.error("Could not parse JSON payload body", e);
+    }
+  }
+
+  const url = new URL(req.url);
+  
+  // DEEP SESSION EXTRACTION MATRIX
+  // StreamableHTTPClientTransport variations sometimes bury or pass the target ID differently
+  const mcpSessionId = 
+    req.headers.get("mcp-session-id") ||
+    url.searchParams.get("sessionId") || 
+    bodyPayload?.sessionId ||
+    bodyPayload?.params?.sessionId ||
+    bodyPayload?.params?.meta?.sessionId; // Fallback check for proxy layers
+
+  console.error(`[MCP Routing Debug] Extracted SessionID: "${mcpSessionId}" | Method: ${req.method}`);
+
+  // Check Redis to verify if this session exists globally across clusters
+  const globalSessionExists = mcpSessionId ? await redis.exists(`mcp:session:${mcpSessionId}`) : 0;
+
+  // Case A: Existing stream connection matching an active transport session
+  if (mcpSessionId && globalSessionExists) {
+    let transport = activeTransports.get(mcpSessionId)!;
+    
+    // Serverless Sync Fallback: Reconstruct connection mapping if a sibling server initialized it
+    if (!transport) {
+      console.error(`[Serverless Sync] Hot-linking execution pipeline context for context ID: ${mcpSessionId}`);
+      transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: () => mcpSessionId,
+        onsessioninitialized: () => {}
+      });
+
+    // 🔑 CRITICAL FIX: Set private initialization flags so the SDK accepts requests on new isolates
+      (transport as any)._sessionId = mcpSessionId;
+      (transport as any).sessionId = mcpSessionId;
+      (transport as any)._initialized = true; // Prevents "Server not initialized" 400 error
+
+      await mcpServer.connect(transport);
+      activeTransports.set(mcpSessionId, transport);
+    }
+
+    const requestOptions: RequestInit = {
+      method: req.method,
+      headers: req.headers,
+    };
+
+      if (req.method !== "GET" && req.method !== "HEAD" && bodyPayload) {
+        requestOptions.body = JSON.stringify(bodyPayload);
+      }
+  
+      const standardReq = new Request(req.url, requestOptions);
+      return await transport.handleRequest(standardReq);
+    }
+
+    // Create an array to track async operations we must wait for before exiting the request pipeline
+  const pendingOperations: Promise<any>[] = [];
+  
+  // Case B: Initialization Handshake
+  if (!mcpSessionId && isInitializeRequest(bodyPayload)) {
+    const newTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+      onsessioninitialized: (id) => {
+        console.error(`[MCP Server State] Session ${id} initialized successfully.`);
+        activeTransports.set(id, newTransport);
+        // Track session state cluster-wide in Redis with a 1 hour expiration window
+        // Push the promise to an outer tracking array instead of dangling an isolated async block
+        pendingOperations.push(
+          redis.set(`mcp:session:${id}`, "active", { ex: 3600 })
+        );
+      }
+    });
+
+    newTransport.onclose = () => {
+      // Clean up maps when connection teardowns fire
+      for (const [sid, trans] of activeTransports.entries()) {
+        if (trans === newTransport) {
+          activeTransports.delete(sid);
+          // Handle unawaited promises safely in serverless environments
+          pendingOperations.push(
+            redis.del(`mcp:session:${sid}`),
+            eventStore.clear(sid)
+          );
+          break;
+        }
+      }
+    };
+
+    await mcpServer.connect(newTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload)
+    });
+
+    const response = await newTransport.handleRequest(standardReq);
+
+    // FIX 2: Handle notifications/initialized (which return empty/202 or 400 from transport)
+    if (bodyPayload?.method?.startsWith("notifications/") && response.status === 400) {
+        return new NextResponse(null, { status: 202 });
+     }
+
+    // CRITICAL FOR SERVERLESS: Ensure all background Redis operations finish completely 
+    // before Next.js kills or freezes the execution runtime environment
+    if (pendingOperations.length > 0) {
+      await Promise.allSettled(pendingOperations);
+    }
+
+    return response;
+  }
+
+  // =================================================================
+  // Case C: Stateless On-Demand Execution (FIX FOR VERCEL & HTTP CLIENTS)
+  // Handles tools/list, tools/call, etc., without requiring session handshake
+  // =================================================================
+  if (bodyPayload?.method) {
+    console.log(`[MCP Stateless] Handling method execution: ${bodyPayload.method}`);
+
+    const statelessTransport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+    });
+
+    await mcpServer.connect(statelessTransport);
+
+    const standardReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: JSON.stringify(bodyPayload),
+    });
+
+    return await statelessTransport.handleRequest(standardReq);
+  }
+
+  if (mcpSessionId) {
+    return NextResponse.json({ jsonrpc: "2.0", error: { code: -32001, message: "Session expired or not found" }, id: null }, { status: 404 });
+  }
+  return NextResponse.json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: Session missing properties" }, id: null }, { status: 400 });
+}
+
+// GET handler returns server discovery schema parameters required by modern clients
+export async function GET(req: NextRequest) {
+ return handleMcpRouting(req);
+}
+
+/**
+ * Message Endpoint (POST)
+ * Client routes all JSON-RPC payload requests directly here.
+ */
+export async function POST(req: NextRequest) {
+  return handleMcpRouting(req);
+}
+
+// Handle preflight CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, mcp-session-id",
+    },
+  });
+}
+
+// Handle session cleanup gracefully
+export async function DELETE() {
+  return new Response(null, { status: 200 });
+}
