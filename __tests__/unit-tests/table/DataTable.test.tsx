@@ -10,6 +10,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/lib/utils", () => ({
+  ...jest.requireActual("@/lib/utils"),
   decryptKey: jest.fn(),
   encryptKey: jest.fn(),
 }));
