@@ -24,7 +24,7 @@ jest.mock("@/components/forms/PatientForm", () => ({
   default: () => <div data-testid="patient-form">Patient Form</div>,
 }));
 
-describe("Home Page Integration Flow", () => {
+describe("Home Page Unit Test Flow", () => {
   beforeAll(() => {
     // Polyfill window.crypto for randomUUID used in session tracking
     Object.defineProperty(window, 'crypto', {
