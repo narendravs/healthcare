@@ -1,7 +1,37 @@
 import "@testing-library/jest-dom";
+import { TextEncoder, TextDecoder } from "util";
 
+// Properly handle ESM default export + TypeScript types + JSX syntax
+jest.mock("react-markdown", () => ({
+  __esModule: true,
+  default: ({ children }: { children?: React.ReactNode }) => (
+    React.createElement("div", null, children),
+  ),
+}));
 
-// 1. Global Mock for Appwrite Configuration & SDK Methods
+// Polyfill TextEncoder and TextDecoder for Next.js server streams in JSDOM
+if (typeof global.TextEncoder === "undefined") {
+  global.TextEncoder = TextEncoder;
+}
+
+if (typeof global.TextDecoder === "undefined") {
+  global.TextDecoder = TextDecoder as typeof global.TextDecoder;
+}
+
+// Require undici AFTER TextDecoder is attached to global (prevents hoisting)
+const { Request, Response, Headers } = require("undici");
+// Polyfill Web Fetch API globals for Next.js server features in JSDOM
+if (typeof global.Request === "undefined") {
+  global.Request = Request as unknown as typeof global.Request;
+}
+if (typeof global.Response === "undefined") {
+  global.Response = Response as unknown as typeof global.Response;
+}
+if (typeof global.Headers === "undefined") {
+  global.Headers = Headers as unknown as typeof global.Headers;
+}
+
+// Global Mock for Appwrite Configuration & SDK Methods
 jest.mock("@/lib/actions/appwrite.config", () => {
   // Create mock instances of Appwrite services with basic chainable/spy methods
   const mockClient = {
