@@ -16,7 +16,7 @@ jest.mock("@/lib/actions/appointment.actions", () => ({
 }));
 
 // Mock constants to ensure predictable test results
-jest.mock("../../../../../constants", () => ({
+jest.mock("@/constants", () => ({
   Doctors: [
     { name: "John Doe", image: "/assets/images/dr-john.png" },
   ],
