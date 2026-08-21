@@ -28,12 +28,13 @@ describe("CustomDateTimePicker Unit Test", () => {
   });
 
   it("disables both date button and time input when disabled prop is true", () => {
-    render(<CustomDateTimePicker onChange={mockOnChange} disabled={true} />);
+    const { container } = render(<CustomDateTimePicker onChange={mockOnChange} disabled={true} />);
     
-    const dateButton = screen.getByRole("button");
-    const timeInput = screen.getByRole("textbox", { hidden: true }); // type='time' can be tricky to find by role
+    const dateButton = screen.getByRole("button", { name: /pick a date/i });
+    const timeInput = container.querySelector<HTMLInputElement>('input[type="time"]'); // type='time' can be tricky to find by role
     
     expect(dateButton).toBeDisabled();
-    expect(screen.getByDisplayValue("")).toBeDisabled();
+    expect(timeInput).toBeDisabled();
+    expect(timeInput).toBeInTheDocument();
   });
 });
