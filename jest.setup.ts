@@ -31,6 +31,12 @@ if (typeof global.Headers === "undefined") {
   global.Headers = Headers as unknown as typeof global.Headers;
 }
 
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Global Mock for Appwrite Configuration & SDK Methods
 jest.mock("@/lib/actions/appwrite.config", () => {
   // Create mock instances of Appwrite services with basic chainable/spy methods
