@@ -11,6 +11,7 @@ jest.mock("next/navigation", () => ({
 
 // Mock utils
 jest.mock("@/lib/utils", () => ({
+  ...jest.requireActual("@/lib/utils"),
   decryptKey: jest.fn(),
   encryptKey: jest.fn(),
 }));
@@ -19,6 +20,8 @@ describe("PasskeyModal Unit Test", () => {
   const mockPush = jest.fn();
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useRealTimers();
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
     (usePathname as jest.Mock).mockReturnValue("/admin");
