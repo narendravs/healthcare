@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "@testing-library/jest-dom";
 
 // Mock next-themes to isolate our provider wrapper
