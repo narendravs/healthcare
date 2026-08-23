@@ -11,6 +11,7 @@ jest.mock("next/navigation", () => ({
 
 // Mock encryption utils
 jest.mock("@/lib/utils", () => ({
+  ...jest.requireActual("@/lib/utils"),
   encryptKey: (val: string) => `encrypted_${val}`,
   decryptKey: (val: string) => val.replace("encrypted_", ""),
 }));
