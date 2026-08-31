@@ -17,6 +17,7 @@ jest.mock("@/lib/actions/appointment.actions", () => ({
 
 // Mocking utility for consistent date strings
 jest.mock("@/lib/utils", () => ({
+  ...jest.requireActual("@/lib/utils"),
   formatDateTime: jest.fn(() => ({
     dateTime: "Dec 25, 2024 - 10:00 AM",
   })),
