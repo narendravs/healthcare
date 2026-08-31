@@ -7,9 +7,15 @@ jest.mock("next/navigation", () => ({
   redirect: jest.fn(),
 }));
 
-jest.mock("@/lib/utils", () => ({
-  decryptKey: jest.fn(),
-}));
+jest.mock("@/lib/utils", () => {
+  const actualUtils = jest.requireActual("@/lib/utils");
+  return {
+    ...actualUtils,
+    cn: actualUtils.cn || ((...inputs: any[]) => inputs.filter(Boolean).join(" ")),
+    formatDateTime: jest.fn(() => ({ dateTime: "Dec 25, 2024 - 10:00 AM" })),
+    decryptKey: jest.fn(),
+  };
+});
 
 describe("DataTable Integration Flow", () => {
   const mockColumns = [
