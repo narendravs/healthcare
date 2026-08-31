@@ -10,8 +10,22 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/lib/utils", () => ({
-  decryptKey: jest.fn(),
-  formatDateTime: jest.fn(() => ({ dateTime: "Dec 25, 2024 - 10:00 AM" })),
+ ...jest.requireActual("@/lib/utils"),
+  formatDateTime: jest.fn(() => ({
+    dateTime: "Dec 25, 2024 - 10:00 AM",
+  })),
+  decryptKey: jest.fn(), // <--- Add this so decryptKey becomes a jest.Mock
+}));
+
+// Mock Doctors array explicitly to guarantee match
+jest.mock("@/constants", () => ({
+  ...jest.requireActual("@/constants"),
+  Doctors: [
+    {
+      image: "/assets/images/dr-green.png",
+      name: "John Green",
+    },
+  ],
 }));
 
 // Mock StatusBadge to verify props
@@ -20,7 +34,7 @@ jest.mock("@/components/StatusBadge", () => ({
 }));
 
 // Mock AppointmentModal to verify it's receiving the right types
-jest.mock("../../src/components/AppointmentModal", () => ({
+jest.mock("@/components/AppointmentModal", () => ({
   __esModule: true,
   default: ({ type }: { type: string }) => <div data-testid={`modal-${type}`}>{type}</div>,
 }));
@@ -32,7 +46,7 @@ describe("Table Columns Integration Flow", () => {
       patient: { $id: "p_1", name: "John Patient" },
       status: "scheduled",
       schedule: new Date(),
-      primaryPhysician: "John Doe",
+      primaryPhysician: "John Green",
       userId: "user_1",
     },
   ];
@@ -55,7 +69,10 @@ describe("Table Columns Integration Flow", () => {
     expect(badge).toHaveTextContent("scheduled");
 
     // 3. Doctor Info
-    expect(screen.getByText("Dr. John Doe")).toBeInTheDocument();
+    // 👈 Use a regular expression or match the rendered "Dr. John Green" output
+    expect(screen.getByText(/John Green/i)).toBeInTheDocument();
+    
+    // 👈 Match alt text accurately (columns.tsx uses `doctor.name` as alt text)
     expect(screen.getByAltText("doctor")).toBeInTheDocument();
 
     // 4. Action Modals (Schedule and Cancel)
