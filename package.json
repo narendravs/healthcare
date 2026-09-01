@@ -26,7 +26,10 @@
     "// --- Testing Unit & Integration ---": "",
     "test": "jest __tests__/**/*.test.tsx",
     "test:unit": "jest __tests__/unit-tests/*.test.tsx",
-    "test:integration": "jest __tests__/integration-tests/*.test.tsx"
+    "test:integration": "jest __tests__/integration-tests/*.test.tsx",
+    "test:coverage": "npm run test -- --coverage",
+    "test:unit:coverage": "jest __tests__/unit-tests/*.test.tsx --coverage",
+    "test:integration:coverage": "jest __tests__/integration-tests/*.test.tsx --coverage"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
