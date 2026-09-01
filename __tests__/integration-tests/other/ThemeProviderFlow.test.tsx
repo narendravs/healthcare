@@ -1,7 +1,25 @@
 import { render, screen } from "@testing-library/react";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { useTheme } from "next-themes";
 import "@testing-library/jest-dom";
+
+
+// Mock matchMedia before running next-themes tests
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+});
 
 // Mock component that consumes the theme
 const ThemeConsumer = () => {
