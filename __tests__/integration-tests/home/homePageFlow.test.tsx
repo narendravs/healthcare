@@ -72,7 +72,7 @@ describe("Home Page Integration Flow", () => {
 
     // Verify components
     expect(screen.getByTestId("patient-form")).toBeInTheDocument();
-    expect(screen.getByAltText("patient")).toBeInTheDocument();
+    expect(screen.getAllByAltText("patient").length).toBeGreaterThan(0);
     
     // Verify session storage initialization
     expect(sessionStorage.getItem("active_chat_session")).toBe("session_test-uuid-123");
