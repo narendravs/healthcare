@@ -31,6 +31,15 @@ if (typeof global.Headers === "undefined") {
   global.Headers = Headers as unknown as typeof global.Headers;
 }
 
+if (typeof window !== 'undefined') {
+  Element.prototype.scrollIntoView = jest.fn();
+}
+
+if (typeof window !== 'undefined') {
+  Element.prototype.scrollIntoView = jest.fn();
+  window.HTMLElement.prototype.hasPointerCapture = jest.fn();
+  window.HTMLElement.prototype.releasePointerCapture = jest.fn();
+}
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
