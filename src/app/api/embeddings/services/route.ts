@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
-import { runDocumentProcess } from "@/embeddings/doc-embeddings/documentCloudEmbeddings.ts";
+import { runDocumentProcess } from "@/embeddings/doc-embeddings/documentCloudEmbeddings";
 import { put } from "@vercel/blob";
-import { embeddingTask } from "@/trigger/embeddingTask.ts";
+import { embeddingTask } from "@/trigger/embeddingTask";
 import { configure } from "@trigger.dev/sdk";
 
 // Configure the SDK globally at the module level
