@@ -1,0 +1,9 @@
+# Dependencies & Build Outputs
+node_modules
+.next
+build
+dist
+public
+
+# Package locks
+package-lock.json
