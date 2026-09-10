@@ -1,6 +1,6 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // "editor.defaultFormatter": "esbenp.prettier-vscode",
 
   "editor.formatOnSaveTimeout": 3000,
 
@@ -72,5 +72,9 @@
   /* 4. Project-Specific Snippets & Suggestions */
   "editor.suggest.showWords": false,
   "editor.snippetSuggestions": "top",
-  "explorer.compactFolders": false
+  "explorer.compactFolders": false,
+
+  /* 5. Prettier Ignore Path */
+  "prettier.ignorePath": "",
+  "prettier.requireConfig": true
 }
