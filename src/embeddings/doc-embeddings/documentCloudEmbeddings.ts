@@ -16,7 +16,7 @@ const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_CLOUD_DOC_INDEX_NAME;
 const PINECONE_INDEX_HOST = process.env.PINECONE_CLOUD_DOC_INDEX_HOST;
 const PINECONE_INDEX_NAME_SPACE = process.env.PINECONE_CLOUD_DOC_INDEX_NAME_SPACE;
-const SILICON_API_KEY = process.env.CLOUD_SILICON_EMBEDDING_API_KEY;
+const JINA_API_KEY = process.env.CLOUD_JINA_EMBEDDING_API_KEY;
 
 // --- Global Client States ---
 let pinecone: any;
@@ -193,24 +193,24 @@ function getChunksFromText(documentText?: string): StructuredChunk[] {
  */
 async function getEmbeddingsForChunks(chunks: string[]): Promise<number[][]> {
   try {
-    if (!SILICON_API_KEY) {
+    if (!JINA_API_KEY) {
       throw new Error(
-        "CRITICAL: CLOUD_SILICON_EMBEDDING_API_KEY is missing from environment variables."
+        "CRITICAL: CLOUD_JINA_EMBEDDING_API_KEY is missing from environment variables."
       );
     }
 
     console.log(
-      `Generating cloud embeddings via SiliconFlow for a batch of ${chunks.length} chunks...`
+      `Generating cloud embeddings via Jina AI for a batch of ${chunks.length} chunks...`
     );
 
-    const response = await fetch("https://api.siliconflow.com/v1/embeddings", {
+    const response = await fetch("https://api.jina.ai/v1/embeddings", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${SILICON_API_KEY.trim()}`,
+        Authorization: `Bearer ${JINA_API_KEY.trim()}`,
       },
       body: JSON.stringify({
-        model: "Qwen/Qwen3-Embedding-0.6B",
+        model: "jina-embeddings-v3",
         input: chunks, // Bulk array assignment
       }),
     });
@@ -351,7 +351,7 @@ async function processAndUpsertChunks(chunks: StructuredChunk[], fileName: strin
     // 1. Deduplicate inline without holding massive global duplicate copies
     const seen = new Set<string>();
     const uniqueChunks: StructuredChunk[] = [];
-    
+
     for (const c of chunks) {
       const key = normalizeText(c.line);
       if (key && !seen.has(key)) {
@@ -366,13 +366,13 @@ async function processAndUpsertChunks(chunks: StructuredChunk[], fileName: strin
     // 2. Process in strict, clean iterative window loops
     for (let chunkIndex = 0; chunkIndex < uniqueChunks.length; chunkIndex += BATCH_SIZE) {
       const batch = uniqueChunks.slice(chunkIndex, chunkIndex + BATCH_SIZE);
-      
+
       console.log(
         `Processing batch window: Chunks ${chunkIndex} to ${Math.min(chunkIndex + BATCH_SIZE - 1, uniqueChunks.length - 1)}`
       );
 
       const linesToEmbed = batch.map((c) => c.line);
-      
+
       // Fetch embeddings for this isolated window only
       const embeddings = await getEmbeddingsForChunks(linesToEmbed);
 
