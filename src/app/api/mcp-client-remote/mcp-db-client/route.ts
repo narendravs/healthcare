@@ -8,7 +8,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "qwen/qwen3.8-27b";
 
 function getPineConeService() {
   const pinecone = new Pinecone({
@@ -48,7 +48,7 @@ async function getEmbeddingForQuery(query: string): Promise<number[]> {
     }
 
     const data = await response.json();
-    console.log("👉 Received embedding response from Voyage API:", data);
+    console.log("👉 Received embedding response from Jina API:", data);
     return data.data[0].embedding;
   } catch (error) {
     console.error("Error in Cloud Embedding generation:", error);
@@ -98,11 +98,7 @@ async function getConnectedMcpClient() {
  * Exported so internal callers like `executeDynamicSourceQuery` / TTS / STT
  * can invoke it directly without making HTTP loopback fetches.
  */
-export async function executeDBQuery(query: string): Promise<{
-  answer: string;
-  isVerified: boolean;
-  tableName?: string;
-}> {
+export async function executeDBQuery(query: string) {
   // ⚡ SPEED GAIN 1: Fetch active connection instantly (No process spawn lag)
   const mcpClient = await getConnectedMcpClient();
 
@@ -147,7 +143,7 @@ export async function executeDBQuery(query: string): Promise<{
           - Extract 'email' or user identifier from the DATA LAYER.
 
         CRITICAL ARGUMENT RULES:
-        - Extract ONLY the plain value string (e.g., use "Jane Doe", NEVER "Name: Jane Doe", "Email: jane.doe@example.com").
+        - Must extract ONLY the plain value string without missing to send required values to tool calling (e.g., use "Jane Doe", NEVER "Name: Jane Doe", "Email: jane.doe@example.com").
         - NEVER send empty, null, or undefined parameters. If a required field cannot be found in the DATA LAYER or user query, do NOT invoke the tool; answer directly using the DATA LAYER text.`,
       },
       { role: "user", content: query },
@@ -227,12 +223,19 @@ export async function executeDBQuery(query: string): Promise<{
 
       const parsedArguments = JSON.parse(toolCall.function.arguments);
 
+      console.log(`🔧 Executing MCP Tool [${toolName}] with args:`, parsedArguments);
+
       // Execute via Vercel AI SDK runtime engine wrapper wrapper natively
       const mcpResult = await targetTool.execute(parsedArguments);
+
+      // 🔍 DIAGNOSTIC LOG: Inspect raw MCP response payload
+      console.log("📥 RAW MCP SERVER RESPONSE:", JSON.stringify(mcpResult, null, 2));
 
       // Handle output parsing cleanly regardless of string or raw structural payload arrays returned
       const stringifiedToolPayload =
         typeof mcpResult === "string" ? mcpResult : JSON.stringify(mcpResult);
+
+      console.log("📝 STRINGIFIED TOOL PAYLOAD FOR LLM:", stringifiedToolPayload);
 
       const hasLiveRecords = stringifiedToolPayload !== "No records returned from database.";
 
@@ -281,37 +284,34 @@ export async function executeDBQuery(query: string): Promise<{
         finalizedResponse.choices[0].message.content || "No information processed.";
       const cleanAnswer = sanitizeLLMResponse(rawContent);
 
-      // 🟩 CLEANUP: Return ONLY the natural language string answer response
-      return NextResponse.json(
-        {
-          answer: cleanAnswer,
-          isVerified: hasLiveRecords,
-          tableName: hasLiveRecords ? tableName : undefined,
-        },
-        { status: 200 }
-      );
+      console.log("📝 FINALIZED LLM RESPONSE:", finalizedResponse.choices[0].message.content);
+      // 🟢 FIXED: Opening bracket on the same line to avoid returning undefined
+      return {
+        answer: cleanAnswer,
+        isVerified: hasLiveRecords,
+        tableName: hasLiveRecords ? tableName : undefined,
+      };
     }
 
-    // Return text directly here if no tools were called
-    return NextResponse.json(
-      {
-        answer: choice.content || "No information processed.",
-        isVerified: false,
-      },
-      { status: 200 }
-    );
+    // 🟢 FIXED: Opening bracket on the same line to avoid returning undefined
+    return {
+      answer: choice.content || "No information processed.",
+      isVerified: false,
+      tableName: "Medical Knowledge Base",
+    };
   } catch (error: any) {
     console.error("Error in combined Inference Endpoint:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error", error: error.message },
-      { status: 500 }
-    );
+    // 🔴 THROW the error so the POST handler catches it
+    throw new Error(error?.message || "Database inference query failed.");
   } finally {
     if (mcpClient) {
-      // 🔑 Attach .catch directly to the promise to intercept internal transport errors
-      await mcpClient.close().catch((err) => {
-        console.warn("MCP client closed (stateless cleanup ignored):", err?.message || err);
-      });
+      try {
+        await mcpClient.close?.().catch((closeErr: any) => {
+          console.warn("MCP Client cleanup warning:", closeErr?.message);
+        });
+      } catch (cleanupError) {
+        console.warn("Failed to close MCP client cleanly:", cleanupError);
+      }
     }
   }
 }
@@ -336,11 +336,17 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await executeDBQuery(query);
+    console.log("📝Response From executeDBQuery:", result);
     return NextResponse.json(result, { status: 200 });
   } catch (error: any) {
     console.error("Error in combined Inference Endpoint:", error);
+    // The client receives this exact JSON structure on status 500
+    // 🟢 Return structured JSON so the client can safely read data.error
     return NextResponse.json(
-      { message: "Internal Server Error", error: error.message },
+      {
+        error: error?.message || "Internal Server Error during DB Query execution.",
+        isVerified: false,
+      },
       { status: 500 }
     );
   }
