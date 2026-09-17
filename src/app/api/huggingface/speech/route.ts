@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { executeDocQuery } from "@/app/api/mcp-client-remote/mcp-doc-client";
-import { executeAgentQuery } from "@/app/api/aiagents/langchainAgent";
-import { executeDBQuery } from "@/app/api/mcp-client-remote/mcp-db-client";
+import { executeDocQuery } from "../../mcp-client-remote/mcp-doc-client/route";
+import { executeAgentQuery } from "../../aiagents/langchainAgent/route";
+import { executeDBQuery } from "../../mcp-client-remote/mcp-db-client/route";
 import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
 // Use standard, reliably supported models on HF Serverless
-const STT_MODEL = "openai/whisper-large-v3";
-const TTS_MODEL = "facebook/mms-tts-eng";
+const STT_MODEL = "whisper-large-v3-turbo";
+const TTS_MODEL = "canopylabs/orpheus-v1-english";
 
 /**
  * Direct execution router without self-referencing HTTP fetches
@@ -40,11 +41,46 @@ async function executeDynamicSourceQuery(
     default: {
       const data = await executeDocQuery(query);
       return {
-        result: data?.answer || "No response received from Documents.",
-        meta: { source: "Documents" },
+        result: data?.result || data?.answer || "No response received from Documents.",
+        meta: { source: "Documents", ...(data?.meta || {}) },
       };
     }
   }
+}
+
+/**
+ * Split text into sub-200-character sentence chunks for Groq TTS
+ */
+function chunkTextForTTS(text: string, maxLength: number = 190): string[] {
+  // Match sentences ending in punctuation
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const chunks: string[] = [];
+  let currentChunk = "";
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+
+    if ((currentChunk + " " + trimmed).trim().length <= maxLength) {
+      currentChunk = (currentChunk + " " + trimmed).trim();
+    } else {
+      if (currentChunk) chunks.push(currentChunk);
+      // If a single sentence exceeds maxLength, hard slice it
+      if (trimmed.length > maxLength) {
+        let remaining = trimmed;
+        while (remaining.length > 0) {
+          chunks.push(remaining.slice(0, maxLength));
+          remaining = remaining.slice(maxLength);
+        }
+        currentChunk = "";
+      } else {
+        currentChunk = trimmed;
+      }
+    }
+  }
+
+  if (currentChunk) chunks.push(currentChunk);
+  return chunks;
 }
 
 export async function POST(request: Request) {
@@ -65,8 +101,13 @@ export async function POST(request: Request) {
       const parsedBody = JSON.parse(rawText);
       action = parsedBody.action;
       payload = parsedBody.payload;
-      source = parsedBody.source || "documents"; // Default to documents if not specified
-      sessionId = parsedBody.sessionId;
+      source = parsedBody.source || payload?.source || "documents"; // Default to documents if not specified
+      sessionId = parsedBody.sessionId || payload?.sessionId;
+
+      // Fixed console typo here
+      console.log("Action from TTS/STT:", action);
+      console.log("Source from TTS/STT:", source);
+      console.log("Session from TTS/STT:", sessionId);
     } catch (parseError) {
       console.error("Speech API Error: Failed to parse JSON body:", rawText.slice(0, 100));
       return NextResponse.json({ error: "Invalid JSON format in request body." }, { status: 400 });
@@ -81,66 +122,72 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Missing audio payload" }, { status: 400 });
       }
 
-      const base64Audio = payload.replace(/^data:audio\/\w+;base64,/, "");
-      const audioBuffer = Buffer.from(base64Audio, "base64");
-
-      // Direct binary POST to HF pipeline endpoint
-      const sttResponse = await fetch(
-        `https://router.huggingface.co/hf-inference/models/${STT_MODEL}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-            "Content-Type": "audio/webm",
-          },
-          body: audioBuffer,
-        }
-      );
-
-      const rawResponseText = await sttResponse.text();
-      let sttData: any = {};
-
       try {
-        sttData = JSON.parse(rawResponseText);
-      } catch (err) {
-        console.error("HF STT Non-JSON Response:", rawResponseText);
-        return NextResponse.json(
-          {
-            error: "Hugging Face endpoint returned non-JSON error",
-            raw: rawResponseText,
-            status: sttResponse.status,
-          },
-          { status: sttResponse.status || 500 }
-        );
-      }
+        // 1. Convert base64 audio string to Buffer safely
+        const base64Audio =
+          typeof payload === "string"
+            ? payload.replace(/^data:audio\/\w+;base64,/, "")
+            : payload?.audio;
 
-      console.log("=== STT DEBUG LOGS ===");
-      console.log("STT Status Code:", sttResponse.status);
-      console.log("STT Output:", JSON.stringify(sttData));
+        if (!base64Audio) {
+          return NextResponse.json({ error: "Invalid audio format provided." }, { status: 400 });
+        }
 
-      if (
-        sttData.error &&
-        typeof sttData.error === "string" &&
-        sttData.error.toLowerCase().includes("loading")
-      ) {
+        const audioBuffer = Buffer.from(base64Audio, "base64");
+
+        // 2. Use Groq SDK's native `toFile` helper to ensure cross-runtime compatibility
+        const file = await Groq.toFile(audioBuffer, "audio.webm", { type: "audio/webm" });
+
+        // 3. Call Groq Whisper API
+        const transcription = await groq.audio.transcriptions.create({
+          file,
+          model: "whisper-large-v3-turbo", // Use Groq's supported STT model string
+          response_format: "json",
+          language: "en",
+        });
+
+        // 🟢 FIX 1 & 2: Read `transcription.text` directly as a string property
+        const transcribedText = transcription?.text?.trim() || "";
+
+        if (!transcribedText) {
+          return NextResponse.json(
+            { error: "Failed to transcribe audio or clear speech was not detected." },
+            { status: 400 }
+          );
+        }
+
+        console.log("Transcribed Text:", transcribedText);
+
+        // 4. Query downstream RAG / Database / Agent tools safely
+        let mcpData: { result: string; meta?: any } = { result: "" };
+
+        try {
+          mcpData = await executeDynamicSourceQuery(transcribedText, source, sessionId || "");
+
+          // Diagnostic check on mcpData return payload
+          console.log("=== MCP DATA RETURN CHECK ===");
+          console.log("Raw Return Object:", JSON.stringify(mcpData, null, 2));
+        } catch (mcpErr: any) {
+          console.error("Upstream MCP Query execution failed:", mcpErr?.message);
+          mcpData = {
+            result:
+              "I transcribed your speech, but encountered an error processing the request with our system records.",
+            meta: { source: source || "unknown", error: mcpErr?.message },
+          };
+        }
+
+        return NextResponse.json({
+          transcribedText,
+          result: mcpData.result || "No records returned from downstream handler.",
+          meta: mcpData.meta || {},
+        });
+      } catch (sttError: any) {
+        console.error("Groq Whisper STT Error:", sttError);
         return NextResponse.json(
-          { error: "Model warming up. Please retry in 10 seconds." },
-          { status: 503 }
+          { error: sttError?.message || "Internal error during speech transcription." },
+          { status: 500 }
         );
       }
-      const transcribedText = Array.isArray(sttData) ? sttData[0]?.text : sttData?.text || "";
-      if (!transcribedText) {
-        return NextResponse.json(
-          { error: "Failed to transcribe audio", details: sttData },
-          { status: 400 }
-        );
-      }
-      const mcpData = await executeDynamicSourceQuery(transcribedText, source, sessionId);
-      return NextResponse.json({
-        transcribedText,
-        result: mcpData.result,
-        meta: mcpData.meta,
-      });
     }
 
     // 🔊 3. TTS PATH: Text-to-Speech
@@ -151,32 +198,59 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Missing text in payload for TTS" }, { status: 400 });
       }
 
-      const mcpData = await executeDynamicSourceQuery(text, source, sessionId);
-      const responseText = mcpData.result || "No response from MCP";
-      //const responseText = "This is a sample text-to-speech response.";
+      let responseText = "";
+      let sourceMeta = {};
+
+      try {
+        const mcpData = await executeDynamicSourceQuery(text, source, sessionId || "");
+        sourceMeta = mcpData?.meta || {};
+        responseText =
+          typeof mcpData === "string"
+            ? mcpData
+            : mcpData?.result || mcpData?.answer || "No text available for synthesis.";
+      } catch (err: any) {
+        console.error("MCP Source Query failed during TTS execution:", err.message);
+        responseText = "Sorry, I could not retrieve data due to an upstream provider error.";
+      }
+
       const cleanedSpeechText = responseText.replace(/[\*\_~`>#\-\+]/g, "").trim();
 
-      console.log("=== TTS DEBUG LOGS ===");
-      // console.log("TTS Status Code:", mcpData.status);
-      console.log("TTS Output:", JSON.stringify(cleanedSpeechText));
+      console.log("TTS DEBUG LOGS TTS Output:", JSON.stringify(cleanedSpeechText));
 
-      // 1. Call Groq Speech API
-      const response = await groq.audio.speech.create({
-        model: "canopylabs/orpheus-v1-english", // Main Groq English TTS model
-        voice: "autumn", // Options: autumn, diana, hannah, austin, daniel, troy
-        response_format: "wav",
-        input: cleanedSpeechText,
-      });
+      if (!cleanedSpeechText) {
+        return NextResponse.json(
+          { error: "Cannot generate speech: Input text is empty." },
+          { status: 400 }
+        );
+      }
 
-      // 2. Convert raw arrayBuffer to base64
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      // Chunk text so database outputs longer than 200 chars don't get truncated or rejected
+      const textChunks = chunkTextForTTS(cleanedSpeechText, 190);
+      console.log(`🎙️ Processing ${textChunks.length} audio chunks for Groq TTS...`);
+
+      const audioBuffers: Buffer[] = [];
+
+      for (const chunk of textChunks) {
+        const response = await groq.audio.speech.create({
+          model: TTS_MODEL,
+          voice: "autumn",
+          input: chunk,
+          response_format: "wav",
+        });
+
+        const chunkBuffer = Buffer.from(await response.arrayBuffer());
+        audioBuffers.push(chunkBuffer);
+      }
+
+      // Combine audio buffers into a single binary payload
+      const finalAudioBuffer = Buffer.concat(audioBuffers);
 
       return NextResponse.json({
         result: text,
-        audio: `data:audio/wav;base64,${audioBuffer.toString("base64")}`,
+        audio: `data:audio/wav;base64,${finalAudioBuffer.toString("base64")}`,
       });
-      return NextResponse.json({ error: "Invalid action specified" }, { status: 400 });
     }
+    return NextResponse.json({ error: "Invalid action specified" }, { status: 400 });
   } catch (error: any) {
     console.error("Speech API Exception:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
