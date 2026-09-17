@@ -4,9 +4,11 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
 import { createMCPClient } from "@ai-sdk/mcp";
 
-// Initialize Groq Cloud Engine
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const GROQ_MODEL = "qwen/qwen3.6-27b";
+// Initialize Together Cloud Engine
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+const GROQ_MODEL = "qwen/qwen3.8-27b";
 
 // Configure Pinecone index and namespace
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
