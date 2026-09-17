@@ -233,7 +233,9 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: currentInput }),
         });
+
         const data = await response.json();
+        console.log("Database API Response:", data);
         if (data.answer) {
           const isVerified = data?.isVerified;
           const answer = data?.answer;
@@ -259,6 +261,15 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
               content: finalFormattedContent,
             },
           ]);
+        } else {
+          // Fallback for empty payload
+          setMessage((prevMsg) => [
+            ...prevMsg,
+            {
+              role: "bot",
+              content: `⚠️ Received response from server, but no content payload was generated.`,
+            },
+          ]);
         }
       }
       // 2. DOCUMENTS ROUTE (Now safely encapsulated within the try block)
@@ -269,7 +280,6 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
           body: JSON.stringify({ query: currentInput }),
         });
 
-        if (!response.ok) throw new Error(`Document search failed with status: ${response.status}`);
         const data = await response.json();
         console.log("Document Search API Response:", data);
 
@@ -354,6 +364,9 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
             { role: "bot", content: finalMessage || "Response handled successfully." },
           ]);
         }
+      } else if (dataType === "tts_stt") {
+        await processTextTTSQuery(currentInput);
+        return;
       }
     } catch (error) {
       // 🟩 TRAPS ALL RUNTIME OR NETWORK FAILS ACROSS EVERY DATA OPTION
