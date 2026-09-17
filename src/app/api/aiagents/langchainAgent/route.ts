@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
+import { AgentExecutor, createToolCallingAgent } from "@langchain/classic/agents";
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { ChatGroq } from "@langchain/groq";
 import { Calculator } from "@langchain/community/tools/calculator";
@@ -49,7 +49,7 @@ const tools = [
 const prompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-`You are a specialized Medical Appointment Coordinator. Your mission is to move the user through the booking funnel in a strict, non-repetitive, step-by-step sequence.
+    `You are a specialized Medical Appointment Coordinator. Your mission is to move the user through the booking funnel in a strict, non-repetitive, step-by-step sequence.
 
 ### CONVERSATION FLOW (STRICT SEQUENCE):
 1. **Name & Identity:**
@@ -81,11 +81,11 @@ Available Tools: {tool_names}`,
 
 const llm = new ChatGroq({
   apiKey: GROQ_APIKEY,
-  model: "qwen/qwen3.6-27b",
+  model: "qwen/qwen3.8-27b",
   temperature: 0,
 });
 
-const llmWithTools = llm.bind({ tools } as BaseLLMCallOptions);
+const llmWithTools = llm.bindTools(tools);
 
 const agent = await createToolCallingAgent({
   llm: llmWithTools,
@@ -112,6 +112,50 @@ const agentWithChatHistory = new RunnableWithMessageHistory({
   historyMessagesKey: "chat_history",
 });
 
+/**
+ * Core execution function: Call directly from other backend modules or server actions.
+ */
+export async function executeAgentQuery(
+  query: string,
+  sessionId: string
+): Promise<AgentExecutionResult> {
+  if (!sessionId) {
+    throw new Error("sessionId is required to process the agent query.");
+  }
+
+  const toolNames = tools.map((tool) => tool.name).join(", ");
+
+  const result = await agentWithChatHistory.invoke(
+    { input: query, tool_names: toolNames },
+    { configurable: { sessionId } }
+  );
+
+  console.log("Result from Agent output:", result.output);
+
+  let shouldNavigate = false;
+  let targetRoute: string | null = null;
+
+  if (result.intermediateSteps && Array.isArray(result.intermediateSteps)) {
+    for (const step of result.intermediateSteps) {
+      if (step.action?.tool === "navigate_to_admin") {
+        shouldNavigate = true;
+        targetRoute = "/admin";
+        break;
+      }
+    }
+  }
+
+  if (process.env.LANGSMITH_TRACING === "true") {
+    await lsClient.awaitPendingTraceBatches();
+  }
+
+  return {
+    output: result.output,
+    action: shouldNavigate ? "navigate" : null,
+    targetRoute: targetRoute,
+  };
+}
+
 export async function POST(req: NextRequest) {
   if (req.method !== "POST") {
     return NextResponse.json({ message: "Method Not Allowed" }, { status: 405 });
@@ -128,61 +172,21 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
-    const toolNames = tools.map((tool) => tool.name).join(", ");
 
-    // Run execution context. State changes automatically sync to Upstash via RunnableWrapper
-    const result = await agentWithChatHistory.invoke(
-      { 
-        input: query, 
-        tool_names: toolNames 
-      },
-      { 
-        configurable: { sessionId } 
-      }
-    );
+    const result = await executeAgentQuery(query, sessionId);
 
-    console.log("Result from the API output:", result.output);
-
-    // 2. Extract tool execution flags from intermediateSteps
-    let shouldNavigate = false;
-    let targetRoute = null;
-
-    if (result.intermediateSteps && Array.isArray(result.intermediateSteps)) {
-    for (const step of result.intermediateSteps) {
-      // Check if navigate_to_admin or create_appointment tool was called
-      if (step.action?.tool === "navigate_to_admin") {
-        shouldNavigate = true;
-        targetRoute = "/admin";
-        break;
-      }
-    }
-  }
-
-    if (process.env.LANGSMITH_TRACING === "true") {
-      await lsClient.awaitPendingTraceBatches();
-    }
-    
-    return NextResponse.json({
-      output: result.output,
-      action: shouldNavigate ? "navigate" : null,
-      targetRoute: targetRoute
-     }, { status: 200 });
+    return NextResponse.json(agentResult, { status: 200 });
   } catch (error) {
     console.error("Agent execution error:", error);
 
     if (process.env.LANGSMITH_TRACING === "true") {
-       await lsClient.awaitPendingTraceBatches();
+      await lsClient.awaitPendingTraceBatches();
     }
-    return NextResponse.json(
-      { error: "Failed to process request." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to process request." }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest) { 
-
+export async function DELETE(req: NextRequest) {
   try {
     const { sessionId } = await req.json();
 
