@@ -24,6 +24,22 @@ const Header = () => {
       });
       return;
     }
+
+    // 🛑 File Size Restriction (5 KB limit)
+    const MAX_FILE_SIZE_BYTES = 5 * 1024; // 5 KB = 5,120 bytes
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast.warning("File Size Exceeded", {
+        description:
+          "This is testing purpose only, please upload only 5kb or less to see the results instantly/immediately.",
+      });
+
+      // Reset the file input so the user can attempt another file selection
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setIsProcessing(true);
 
     toast.info("Uploading file...", {

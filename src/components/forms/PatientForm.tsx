@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserFormValidation } from "@/lib/validation";
 import { Form, FormField } from "@/components/ui/form";
-import { createUser,getUserByExactName } from "@/lib/actions/patient.actions";
+import { createUser, getUserByExactName } from "@/lib/actions/patient.actions";
 import CustomFormField, { FormFieldType } from "../CustomFormField";
 import SubmitButton from "../SubmitButton";
 // import * as Sentry from "@sentry/nextjs"; //testing the api request latancy
@@ -39,10 +39,10 @@ const PatientForm = () => {
       const user = await getUserByExactName(data.name);
       if (!user) {
         const user = await createUser({
-        email: data.email,
-        phone: data.phone,
-        name: data.name,
-      });
+          email: data.email,
+          phone: data.phone,
+          name: data.name,
+        });
         router.push(`/patients/${user.$id}/register`);
       } else {
         router.push(`/patients/${user.$id}/new-appointment`);
@@ -60,16 +60,15 @@ const PatientForm = () => {
 
   return (
     <Form {...form}>
-      
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="container flex flex-col space-y-4 border-2 rounded-bl-lg rounded-br-lg bg-white-500 w-full p-10"
+        className="bg-white-500 container flex w-full flex-col space-y-4 rounded-br-lg rounded-bl-lg border-2 p-10"
       >
         <section className="mb-12 space-y-4">
           <h1 className="header">Create Patient</h1>
           <p className="text-dark-700">Get started with appointments.</p>
         </section>
-        <div className="flex flex-col w-full gap-3">
+        <div className="flex w-full flex-col gap-3">
           <CustomFormField
             fieldType={FormFieldType.INPUT}
             control={form.control}
@@ -99,17 +98,13 @@ const PatientForm = () => {
             iconAlt="phone"
             placeholder="(555) 123-4567"
           />
-          <div className="ml-8 mt-5">
-            <SubmitButton
-              isLoading={isLoading}
-              className="w-full"
-            >
+          <div className="mt-5 ml-8">
+            <SubmitButton isLoading={isLoading} className="w-full">
               Get Started
             </SubmitButton>
           </div>
         </div>
-        </form>
-        
+      </form>
     </Form>
   );
 };

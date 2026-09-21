@@ -9,7 +9,6 @@
     "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "allowImportingTsExtensions": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
@@ -23,13 +22,14 @@
       }
     ],
     "paths": {
+      "@/app/api/*": ["./src/app/api/*"],
       "@/*": ["./src/*"],
       "@/components/*": ["./src/components/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/constants/*": ["./src/constants/*"],
       "@/types/*": ["./src/types/*"],
       "@/embeddings/*": ["./src/embeddings/*"],
-      "@/tools/*": ["./src/tools/*"],
+      "@/tools/*": ["./src/tools/*"]
     }
   },
   // CHANGED: Restricted the wildcards to target only your workspace code folders, blocking project-root bloat

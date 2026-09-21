@@ -2,7 +2,6 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-
 // --- Configuration and Initialization ---
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || "";
 const PINECONE_CLOUD = process.env.PINECONE_CLOUD || "aws";
@@ -52,7 +51,7 @@ const createPineconeIndex = async (indexName: string, dimension: number) => {
 // --- Main Execution Block ---
 
 // Replace these with your desired index name and the embedding model's dimension
-const myIndexName = "healthcare-cloud";
+const myIndexName = "healthcare-doc-cloud";
 const embeddingDimension = 1024; // The dimension for "Xenova/bge-m3"
 
 // Run the function to create the index
