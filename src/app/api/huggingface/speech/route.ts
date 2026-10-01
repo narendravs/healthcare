@@ -18,7 +18,8 @@ const TTS_MODEL = "canopylabs/orpheus-v1-english";
 async function executeDynamicSourceQuery(
   query: string,
   source: "documents" | "database" | "apicall",
-  sessionId: string
+  sessionId: string,
+  targetLanguage: string
 ) {
   switch (source) {
     case "database": {
@@ -30,7 +31,7 @@ async function executeDynamicSourceQuery(
     }
 
     case "apicall": {
-      const data = await executeAgentQuery(query, sessionId);
+      const data = await executeAgentQuery(query, sessionId, targetLanguage);
       return {
         result: data?.output || "No response received from API Agent.",
         meta: { source: "API Call Agent", action: data?.action },
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
     let payload: any;
     let source: any;
     let sessionId: string | undefined;
+    let targetLanguage: string | undefined;
 
     try {
       const parsedBody = JSON.parse(rawText);
@@ -103,11 +105,13 @@ export async function POST(request: Request) {
       payload = parsedBody.payload;
       source = parsedBody.source || payload?.source || "documents"; // Default to documents if not specified
       sessionId = parsedBody.sessionId || payload?.sessionId;
+      targetLanguage = parsedBody.targetLanguage || payload?.targetLanguage;
 
       // Fixed console typo here
       console.log("Action from TTS/STT:", action);
       console.log("Source from TTS/STT:", source);
       console.log("Session from TTS/STT:", sessionId);
+      console.log("Language from TTS/STT:", targetLanguage);
     } catch (parseError) {
       console.error("Speech API Error: Failed to parse JSON body:", rawText.slice(0, 100));
       return NextResponse.json({ error: "Invalid JSON format in request body." }, { status: 400 });
@@ -143,10 +147,9 @@ export async function POST(request: Request) {
           file,
           model: "whisper-large-v3-turbo", // Use Groq's supported STT model string
           response_format: "json",
-          language: "en",
         });
 
-        // 🟢 FIX 1 & 2: Read `transcription.text` directly as a string property
+        // 🟢 Read `transcription.text` directly as a string property
         const transcribedText = transcription?.text?.trim() || "";
 
         if (!transcribedText) {
@@ -158,11 +161,35 @@ export async function POST(request: Request) {
 
         console.log("Transcribed Text:", transcribedText);
 
+        let searchQuery = transcribedText;
+        const currentLang = targetLanguage || "en";
+
+        if (currentLang !== "en") {
+          const translationCompletion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Translate the user input into English. Output ONLY the translated query, no explanations.",
+              },
+              { role: "user", content: transcribedText },
+            ],
+          });
+          searchQuery =
+            translationCompletion.choices[0]?.message?.content?.trim() || transcribedText;
+          console.log("Translated Search Query for English RAG:", searchQuery);
+        }
         // 4. Query downstream RAG / Database / Agent tools safely
         let mcpData: { result: string; meta?: any } = { result: "" };
 
         try {
-          mcpData = await executeDynamicSourceQuery(transcribedText, source, sessionId || "");
+          mcpData = await executeDynamicSourceQuery(
+            searchQuery,
+            source,
+            sessionId || "",
+            targetLanguage
+          );
 
           // Diagnostic check on mcpData return payload
           console.log("=== MCP DATA RETURN CHECK ===");
@@ -176,9 +203,26 @@ export async function POST(request: Request) {
           };
         }
 
+        let finalAnswer = mcpData.result;
+        if (currentLang !== "en") {
+          const multilingualResponse = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content: `You are an AI assistant. Answer the user strictly in the language corresponding to language code: '${currentLang}'. Use the provided English CONTEXT to form your response accurately.`,
+              },
+              {
+                role: "user",
+                content: `English Context:\n${mcpData.result}\n\nUser Question (${currentLang}):\n${nativeTranscribedText}`,
+              },
+            ],
+          });
+          finalAnswer = multilingualResponse.choices[0]?.message?.content || mcpData.result;
+        }
         return NextResponse.json({
           transcribedText,
-          result: mcpData.result || "No records returned from downstream handler.",
+          result: finalAnswer || "No records returned from downstream handler.",
           meta: mcpData.meta || {},
         });
       } catch (sttError: any) {
@@ -202,12 +246,52 @@ export async function POST(request: Request) {
       let sourceMeta = {};
 
       try {
-        const mcpData = await executeDynamicSourceQuery(text, source, sessionId || "");
+        // Step 1: Translate non-English input query to English for optimal RAG Vector retrieval
+        let searchQuery = text;
+        if (targetLanguage !== "en") {
+          const translationCompletion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Translate the user input to English. Return ONLY the translated string without commentary.",
+              },
+              { role: "user", content: transcribedText },
+            ],
+          });
+          searchQuery = translationCompletion.choices[0]?.message?.content || transcribedText;
+        }
+        const mcpData = await executeDynamicSourceQuery(
+          searchQuery,
+          source,
+          sessionId || "",
+          targetLanguage
+        );
         sourceMeta = mcpData?.meta || {};
         responseText =
           typeof mcpData === "string"
             ? mcpData
             : mcpData?.result || mcpData?.answer || "No text available for synthesis.";
+
+        if (currentLang !== "en") {
+          const targetLangCompletion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content: `Use the provided Context to answer the user request. Respond ONLY in language code '${currentLang}'.`,
+              },
+              {
+                role: "user",
+                content: `Context:\n${rawEnglishContext}\n\nUser Question (${currentLang}):\n${text}`,
+              },
+            ],
+          });
+          responseText = targetLangCompletion.choices[0]?.message?.content || rawEnglishContext;
+        } else {
+          responseText = rawEnglishContext;
+        }
       } catch (err: any) {
         console.error("MCP Source Query failed during TTS execution:", err.message);
         responseText = "Sorry, I could not retrieve data due to an upstream provider error.";
@@ -228,11 +312,14 @@ export async function POST(request: Request) {
       const textChunks = chunkTextForTTS(cleanedSpeechText, 190);
       console.log(`🎙️ Processing ${textChunks.length} audio chunks for Groq TTS...`);
 
+      const activeTtsModel =
+        currentLang === "en" ? TTS_MODEL : getMultilingualTtsModel(currentLang);
+
       const audioBuffers: Buffer[] = [];
 
       for (const chunk of textChunks) {
         const response = await groq.audio.speech.create({
-          model: TTS_MODEL,
+          model: activeTtsModel,
           voice: "autumn",
           input: chunk,
           response_format: "wav",
@@ -254,5 +341,16 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Speech API Exception:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// Helper function to pick correct TTS model based on target language
+function getMultilingualTtsModel(langCode: string): string {
+  switch (langCode.toLowerCase()) {
+    case "ar":
+      return "canopylabs/orpheus-arabic-saudi";
+    default:
+      // Fallback for languages not directly supported by specialized Groq TTS models
+      return "canopylabs/orpheus-v1-english";
   }
 }
