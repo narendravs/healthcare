@@ -20,6 +20,34 @@ interface ChatBoxProps {
   sessionId: string;
 }
 
+const SUPPORTED_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Spanish (Español)" },
+  { code: "fr", label: "French (Français)" },
+  { code: "de", label: "German (Deutsch)" },
+  { code: "hi", label: "Hindi (हिंदी)" },
+  { code: "ar", label: "Arabic (الهندية)" },
+];
+
+// Map basic placeholders for supported languages
+const PLACEHOLDERS: Record<string, string> = {
+  en: "Type your query...",
+  es: "Escriba su consulta...",
+  fr: "Saisissez votre requête...",
+  de: "Geben Sie Ihre Anfrage ein...",
+  hi: "अपनी क्वेरी टाइप करें...",
+  ar: "اكتب استفسارك...",
+};
+
+const RECORDING_PLACEHOLDERS: Record<string, string> = {
+  en: "Listening...",
+  es: "Escuchando...",
+  fr: "Écoute en cours...",
+  de: "Zuhören...",
+  hi: "सुन रहा हूँ...",
+  ar: "جاري الاستماع...",
+};
+
 const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
   const [message, setMessage] = useState([
     { role: "bot", content: "Hello! How can I help you today?" },
@@ -32,6 +60,8 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
   const [voiceSubSource, setVoiceSubSource] = useState<"documents" | "database" | "apicall">(
     "documents"
   );
+
+  const [targetLanguage, setTargetLanguage] = useState<string>("en");
 
   const mediaRecordRef = useRef<MediaRecorder | null>(null);
   const audioChunkRef = useRef<Blob[]>([]);
@@ -114,6 +144,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
           payload: base64Audio,
           source: voiceSubSource, // 👈 Target sub-source passed
           sessionId: activeSessionId,
+          targetLanguage: targetLanguage,
         }),
       });
       const data = await response.json();
@@ -154,6 +185,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
             text: textQuery,
             source: voiceSubSource, // 👈 Target sub-source passed
             sessionId: activeSessionId,
+            targetLanguage: targetLanguage,
           },
         }),
       });
@@ -231,7 +263,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         const response = await fetch(`/api/mcp-client-remote/mcp-db-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: currentInput }),
+          body: JSON.stringify({ query: currentInput, targetLanguage }),
         });
 
         const data = await response.json();
@@ -277,7 +309,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         const response = await fetch(`/api/mcp-client-remote/mcp-doc-client`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: currentInput }),
+          body: JSON.stringify({ query: currentInput, targetLanguage }),
         });
 
         const data = await response.json();
@@ -321,7 +353,7 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         const response = await fetch(`/api/aiagents/langchainAgent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: currentInput, sessionId: activeSessionId }),
+          body: JSON.stringify({ query: currentInput, sessionId: activeSessionId, targetLanguage }),
         });
 
         if (!response.ok) {
@@ -389,31 +421,45 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
         </div>
       )}
       <Card className="w-[350px] bg-white dark:bg-gray-800">
-        <CardHeader className="justify-content-between flex flex-row items-center">
-          <CardTitle className="text-lg">Chat</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onClose(dataType)}
-            className="cursor-pointer"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="lucide lucide-x"
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="justify-content-between flex flex-row items-center justify-center gap-1">
+            <CardTitle className="text-lg">Chat</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onClose(dataType)}
+              className="cursor-pointer"
             >
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-            {/* <X className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:hover:text-white" /> */}
-          </Button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-x"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+              {/* <X className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:hover:text-white" /> */}
+            </Button>
+          </div>
+          <Select value={targetLanguage} onValueChange={(val) => setTargetLanguage(val)}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select Language" />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.code} value={lang.code}>
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent className="p-3">
           <ScrollArea className="h-[350px] pr-2">
@@ -485,9 +531,14 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
 
                 {/* ⌨️ 2. Input Field (Padded to clear both internal buttons) */}
                 <Input
+                  key={`${targetLanguage}-${isRecording}`}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={isRecording ? "Listening..." : "Type query or record..."}
+                  placeholder={
+                    isRecording
+                      ? RECORDING_PLACEHOLDERS[targetLanguage] || "Listening..."
+                      : PLACEHOLDERS[targetLanguage] || "Type query or record..."
+                  }
                   className="w-full text-xs focus-visible:ring-1"
                   disabled={isLoading}
                   autoFocus
@@ -512,9 +563,10 @@ const ChatBox = ({ onClose, type, sessionId }: ChatBoxProps) => {
             ) : (
               <div className="flex w-full gap-2">
                 <Input
+                  key={targetLanguage}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your query...."
+                  placeholder={PLACEHOLDERS[targetLanguage] || "Type your query..."}
                   className="flex-1"
                 />
                 <Button type="submit" disabled={isLoading} className="cursor-pointer">
