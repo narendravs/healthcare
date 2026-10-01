@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
 import { createMCPClient } from "@ai-sdk/mcp";
+import { translateText } from "@/components/translate/n8nTranslate";
 import Groq from "groq-sdk";
 
 const groq = new Groq({
@@ -329,15 +330,35 @@ function sanitizeLLMResponse(text: string): string {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { query } = await req.json();
+    const { query, targetLanguage } = await req.json();
 
     if (!query || typeof query !== "string" || !query.trim()) {
       return NextResponse.json({ error: "Query payload is required." }, { status: 400 });
     }
 
-    const result = await executeDBQuery(query);
-    console.log("📝Response From executeDBQuery:", result);
-    return NextResponse.json(result, { status: 200 });
+    // Step 1: Translate input query to English if non-English
+    let englishQuery = query;
+    if (targetLanguage !== "en") {
+      englishQuery = await translateText(query, targetLanguage, "en");
+    }
+
+    // Step 2: Query Database with englishQuery
+    const responseData = await executeDBQuery(englishQuery);
+
+    // Step 3: Translate response back to original targetLanguage
+    let translatedResult = responseData.result;
+    if (targetLanguage !== "en" && responseData.result) {
+      translatedResult = await translateText(responseData.result, "en", targetLanguage);
+    }
+    console.log("📝Response From executeDBQuery:", translatedResult);
+
+    return NextResponse.json(
+      {
+        result: translatedResult,
+        meta: responseData.meta,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("Error in combined Inference Endpoint:", error);
     // The client receives this exact JSON structure on status 500
