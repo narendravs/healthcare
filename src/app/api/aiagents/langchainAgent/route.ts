@@ -51,6 +51,11 @@ const prompt = ChatPromptTemplate.fromMessages([
     "system",
     `You are a specialized Medical Appointment Coordinator. Your mission is to move the user through the booking funnel in a strict, non-repetitive, step-by-step sequence.
 
+### LANGUAGE INSTRUCTION:
+- Answer ALL user messages strictly in this language: {language}.
+- Regardless of the language the user speaks or inputs, respond only in {language}.
+- Ensure all tool input parameter values (e.g. names, IDs) remain unchanged regardless of translation.
+
 ### CONVERSATION FLOW (STRICT SEQUENCE):
 1. **Name & Identity:**
    - Ask for full name -> call 'get_user_by_name'.
@@ -117,7 +122,8 @@ const agentWithChatHistory = new RunnableWithMessageHistory({
  */
 export async function executeAgentQuery(
   query: string,
-  sessionId: string
+  sessionId: string,
+  language: string
 ): Promise<AgentExecutionResult> {
   if (!sessionId) {
     throw new Error("sessionId is required to process the agent query.");
@@ -126,7 +132,7 @@ export async function executeAgentQuery(
   const toolNames = tools.map((tool) => tool.name).join(", ");
 
   const result = await agentWithChatHistory.invoke(
-    { input: query, tool_names: toolNames },
+    { input: query, tool_names: toolNames, language: language },
     { configurable: { sessionId } }
   );
 
@@ -162,7 +168,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { query, sessionId } = await req.json();
+    const { query, sessionId, targetLanguage = "English" } = await req.json();
 
     // Add explicit validation guard
     if (!sessionId) {
@@ -173,7 +179,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await executeAgentQuery(query, sessionId);
+    const result = await executeAgentQuery(query, sessionId, targetLanguage);
 
     return NextResponse.json(agentResult, { status: 200 });
   } catch (error) {
