@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
+import { translateText } from "@/components/translate/n8nTranslate";
 import { createMCPClient } from "@ai-sdk/mcp";
 
 // Initialize Together Cloud Engine
@@ -281,9 +282,33 @@ CRITICAL DISCIPLINE & ROUTING RULES:
 // =================================================================
 export async function POST(req: NextRequest) {
   try {
-    const { query } = await req.json();
-    const responseData = await executeDocQuery(query);
-    return NextResponse.json(responseData, { status: 200 });
+    const { query, targetLanguage } = await req.json();
+
+    if (!query) {
+      return NextResponse.json({ message: "Query string is required" }, { status: 400 });
+    }
+
+    // Step 1: Translate input query to English if non-English
+    let englishQuery = query;
+    if (targetLanguage !== "en") {
+      englishQuery = await translateText(query, targetLanguage, "en");
+    }
+    // Step 2: Query Documents with englishQuery
+    const responseData = await executeDocQuery(englishQuery);
+
+    // Step 3: Translate response back to original targetLanguage
+    let translatedResult = responseData.result;
+    if (targetLanguage !== "en" && responseData.result) {
+      translatedResult = await translateText(responseData.result, "en", targetLanguage);
+    }
+
+    return NextResponse.json(
+      {
+        result: translatedResult,
+        meta: responseData.meta,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("Critical Failure inside combined Agent Route:", error);
     return NextResponse.json(
