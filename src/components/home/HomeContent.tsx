@@ -15,19 +15,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ChatBox from "@/components/chat/ChatBox";
+import { VoiceAssistantControl } from "@/components/livekit/LiveKitRoom";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
+import EndCallButton from "@/components/livekit/EndCallButton";
 
 const HomeContent = () => {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string>("");
+
+  // LiveKit states
+  const [token, setToken] = useState<string | null>(null);
+  const [livekitUrl, setLivekitUrl] = useState<string>("");
+  const [isCallActive, setIsCallActive] = useState<boolean>(false);
+  const [roomName, setRoomName] = useState<string>("");
+
   const type = "database";
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
 
   useEffect(() => {
-
     // 🚀 Generate a persistent, unique session token for this browser tab session
     if (typeof window !== "undefined") {
       let currentSession = sessionStorage.getItem("active_chat_session");
@@ -46,40 +55,101 @@ const HomeContent = () => {
     setOpen(true);
   };
 
-  const closeChat = async (currentDataType: "database" | "documents" | "apicall") => {
-   
-    // Only execute the DELETE fetch if the agent was actually hitting the LangChain route
-  if (currentDataType === "apicall") {
+  // Handler to fetch token from your API and start LiveKit session
+  const handlePhoneCall = async () => {
     try {
-      await fetch(`/api/aiagents/langchainAgent`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: chatSessionId }),
-      });
-    } catch (err) {
-      console.error("Failed to tear down chat agent session context:", err);
+      const response = await fetch("/api/livekit/voice", { cache: "no-store" });
+      const data = await response.json();
+
+      if (!response.ok || !data.token || !data.url) {
+        throw new Error(data.error ?? "Token request failed");
+      }
+
+      if (data.token && data.url) {
+        setToken(data.token);
+        setLivekitUrl(data.url);
+        setRoomName(data.room);
+        setIsCallActive(true);
+      }
+    } catch (error) {
+      console.error("Failed to connect to LiveKit room:", error);
     }
-  }
-  
-  // Always close the UI state for database, documents, or completed apicalls
-  setOpen(false);
+  };
+
+  const endCall = () => {
+    setIsCallActive(false);
+    setToken(null);
+    setRoomName(null);
+  };
+
+  const closeChat = async (currentDataType: "database" | "documents" | "apicall") => {
+    // Only execute the DELETE fetch if the agent was actually hitting the LangChain route
+    if (currentDataType === "apicall") {
+      try {
+        await fetch(`/api/aiagents/langchainAgent`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: chatSessionId }),
+        });
+      } catch (err) {
+        console.error("Failed to tear down chat agent session context:", err);
+      }
+    }
+
+    // Always close the UI state for database, documents, or completed apicalls
+    setOpen(false);
   };
 
   return (
     <div className="flex min-h-screen flex-row">
       {isAdmin && <PasskeyModal />}
+
+      {/* 📞 LIVEKIT VOICE CALL OVERLAY */}
+      {isCallActive && token && (
+        <>
+          <div className="fixed right-4 bottom-4 z-[9999] w-fit rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-900">
+            <LiveKitRoom
+              video={false}
+              audio={true}
+              token={token}
+              serverUrl={livekitUrl}
+              onDisconnected={endCall}
+              onError={(e) => console.error("LiveKit error:", e)}
+              data-lk-theme="default"
+              className="flex h-full w-full items-center justify-center"
+            >
+              <RoomAudioRenderer />
+              <VoiceAssistantControl onDisconnect={endCall} />
+            </LiveKitRoom>
+          </div>
+          <EndCallButton onClick={endCall} />
+        </>
+      )}
+
       <section className="remove-scrollbar container w-full">
         <div className="ml-0 flex flex-col gap-0">
           <div className="rounded-1 flex w-full flex-row items-center gap-5 bg-blue-300 p-4">
+            <div className="flex items-center gap-5">
+              <Image
+                src={"/assets/icons/logo-full.svg"}
+                width={200}
+                height={40}
+                alt="patient"
+                className="h-auto w-auto"
+              />
+              <span className="hidden text-2xl font-bold sm:block">Hospital Management System</span>
+            </div>
             <Image
-              src={"/assets/icons/logo-full.svg"}
-              width={200}
-              height={40}
-              alt="patient"
-              className="h-auto w-auto"
+              src="/assets/icons/phone.svg"
+              width={40}
+              height={10}
+              alt="phone"
+              title="Call to schedule an appointment"
+              onClick={handlePhoneCall}
+              className="ml-auto h-10 cursor-pointer rounded-full bg-green-500 p-2"
             />
-            <span className="hidden text-2xl font-bold sm:block">Hospital Management System</span>
           </div>
+
           <PatientForm />
           <div className="text-14-regular mt-10 flex flex-row justify-between px-2">
             <p className="text-dark-600 xl:text-left">© 2024 CarePluse</p>
@@ -92,7 +162,7 @@ const HomeContent = () => {
                 alt="chat box"
                 width={30}
                 height={30}
-                className="ml-[50%] mt-2 cursor-pointer"
+                className="mt-2 ml-[50%] cursor-pointer"
               />
             </Button>
             <Link href="/?admin=true" className="text-green-500">
@@ -110,7 +180,7 @@ const HomeContent = () => {
           className="side-img min-h-screen w-auto flex-1 object-cover"
           priority
         />
-        <div className="absolute right-0 top-0 mr-[3px] mt-[3px] p-5">
+        <div className="absolute top-0 right-0 mt-[3px] mr-[3px] p-5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
