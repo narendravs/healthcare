@@ -100,12 +100,8 @@ export async function executeGraphQuery(
   ];
 
   // 3. Invoke LangGraph workflow
-  const finalState = await graph.invoke -
-    `
-    (` nm,90tfgcxidsaasDFRGTHYUIKUJYGTFDSAsdefrtgyhuiouytgrfdesaAsdertyu][
-      \OI
-  ]?><mn vcSWE4r56trfdexsrtdxfrtfdxfrtfdxrfdfdcxwe34556rzxaqW234RQaDErt456e21w  XDFGJHYUIOP[\
-    { messges: inputMessages },
+  const finalState = await graph.invoke(
+    { messages: inputMessages },
     { configurable: { thread_id: sessionId } }
   );
 
