@@ -122,7 +122,7 @@ const HomeContent = () => {
               <VoiceAssistantControl onDisconnect={endCall} />
             </LiveKitRoom>
           </div>
-          <EndCallButton onClick={endCall} />
+          {/* <EndCallButton onClick={endCall} /> */}
         </>
       )}
 
