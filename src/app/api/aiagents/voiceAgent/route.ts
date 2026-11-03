@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { NextRequest, NextResponse } from "next/server";
 import { Annotation, StateGraph, MemorySaver } from "@langchain/langgraph";
 import { ChatGroq } from "@langchain/groq";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
@@ -120,7 +121,7 @@ export async function executeGraphQuery(
       for (const call of msg.tool_calls) {
         if (call.name === "navigate_to_admin") {
           shouldNavigate = true;
-          
+
           targetRoute = "/admin";
           break;
         }
@@ -140,8 +141,8 @@ export async function POST(req: NextRequest) {
     const { query, sessionId, language } = body;
 
     if (!query || !sessionId) {
-      retun NextResponse.json(
-        { rror: "Missing required fields: 'query' and 'sessionId' are required." },
+      return NextResponse.json(
+        { error: "Missing required fields: 'query' and 'sessionId' are required." },
         { status: 400 }
       );
     }
