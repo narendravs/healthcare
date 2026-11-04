@@ -35,6 +35,7 @@ const HomeContent = () => {
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
+
   // Inside your component:
   const roomNameRef = useRef(roomName);
 
@@ -106,6 +107,7 @@ const HomeContent = () => {
 
   // Handle sudden tab closures or refreshes using sendBeacon
   useEffect(() => {
+    if (!roomName) return;
     const handleBeforeUnload = () => {
       if (roomNameRef.current) {
         navigator.sendBeacon(
@@ -156,8 +158,8 @@ const HomeContent = () => {
               data-lk-theme="default"
               className="flex h-full w-full items-center justify-center"
             >
-              <RoomAudioRenderer />
               <VoiceAssistantControl onDisconnect={endCall} />
+              <RoomAudioRenderer />
             </LiveKitRoom>
           </div>
           <EndCallButton onClick={endCall} />
