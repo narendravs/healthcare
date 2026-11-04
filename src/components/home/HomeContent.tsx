@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PasskeyModal from "@/components/PasskeyModal";
@@ -35,6 +35,13 @@ const HomeContent = () => {
   const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
+  // Inside your component:
+  const roomNameRef = useRef(roomName);
+
+  // Keep the ref updated on every render
+  useEffect(() => {
+    roomNameRef.current = roomName;
+  }, [roomName]);
 
   useEffect(() => {
     // 🚀 Generate a persistent, unique session token for this browser tab session
@@ -76,11 +83,42 @@ const HomeContent = () => {
     }
   };
 
-  const endCall = () => {
+  const endCall = async () => {
+    // If we have an active room name, delete it on the server immediately
+    if (roomNameRef.current) {
+      try {
+        await fetch("/api/livekit/voice", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomName: roomNameRef.current }),
+        });
+      } catch (err) {
+        console.error("Failed to tear down LiveKit room:", err);
+      }
+    }
+
+    // Clear client states
     setIsCallActive(false);
     setToken(null);
-    setRoomName(null);
+    setRoomName("");
+    setLivekitUrl("");
   };
+
+  // Handle sudden tab closures or refreshes using sendBeacon
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (roomNameRef.current) {
+        navigator.sendBeacon(
+          "/api/livekit/voice",
+          JSON.stringify({ roomName: roomNameRef.current })
+        );
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   const closeChat = async (currentDataType: "database" | "documents" | "apicall") => {
     // Only execute the DELETE fetch if the agent was actually hitting the LangChain route
