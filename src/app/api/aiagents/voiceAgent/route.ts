@@ -101,13 +101,14 @@ export async function executeGraphQuery(
   // 1. Load prior messages from Redis chat history
   const redisHistory = getRedisChatHistory(sessionId);
   const historicMessages = await redisHistory.getMessages();
+  const trimmedHistory = historicMessages.slice(-5);
 
   // 2. Wrap the incoming human query as a proper LangChain HumanMessage
   const currentMessage = new HumanMessage({
     content: `[Language: ${language}] ${query}`,
   });
 
-  const inputMessages = [...historicMessages, currentMessage];
+  const inputMessages = [...trimmedHistory, currentMessage];
 
   // 3. Invoke LangGraph workflow
   const finalState = await graph.invoke(
