@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { Annotation, StateGraph, MemorySaver } from "@langchain/langgraph";
+import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import { ChatGroq } from "@langchain/groq";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { UpstashRedisChatMessageHistory } from "@langchain/community/stores/message/upstash_redis";
@@ -41,6 +42,11 @@ const GraphState = Annotation.Root({
   }),
 });
 
+const systemPrompt = `You are a hospital management backend assistant. 
+When you receive a query about listing doctors, you MUST invoke the GetDoctorsListTool.
+When you receive a query about scheduling an appointment, you MUST extract the patient name, doctor name, time, and reason, and invoke the CreateAppointmentTool.
+Never answer appointment scheduling or doctor listing questions from memory; always use the tools.`;
+
 const llm = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
   model: "qwen/qwen3.8-27b",
@@ -49,7 +55,9 @@ const llm = new ChatGroq({
 
 // Define Nodes
 async function callModel(state: typeof GraphState.State) {
-  const response = await llm.invoke(state.messages);
+  // Ensure the system prompt is always present at the beginning of the messages list
+  const messagesWithSystem = [new SystemMessage(systemPrompt), ...state.messages];
+  const response = await llm.invoke(messagesWithSystem);
   return { messages: [response] };
 }
 
@@ -94,11 +102,12 @@ export async function executeGraphQuery(
   const redisHistory = getRedisChatHistory(sessionId);
   const historicMessages = await redisHistory.getMessages();
 
-  // 2. Format system prompt / language context if needed
-  const inputMessages = [
-    ...historicMessages,
-    { role: "human", content: `[Language: ${language}] ${query}` },
-  ];
+  // 2. Wrap the incoming human query as a proper LangChain HumanMessage
+  const currentMessage = new HumanMessage({
+    content: `[Language: ${language}] ${query}`,
+  });
+
+  const inputMessages = [...historicMessages, currentMessage];
 
   // 3. Invoke LangGraph workflow
   const finalState = await graph.invoke(
@@ -109,9 +118,9 @@ export async function executeGraphQuery(
   const latestMessage = finalState.messages[finalState.messages.length - 1];
   const outputText = latestMessage.content || "Response handled successfully.";
 
-  // 4. Save new conversation turns back to Redis history
-  await redisHistory.addMessage({ role: "human", content: query });
-  await redisHistory.addMessage({ role: "assistant", content: outputText });
+  // 4. Save new conversation turns back to Redis history using proper message objects
+  await redisHistory.addMessage(new HumanMessage({ content: query }));
+  await redisHistory.addMessage(new AIMessage({ content: outputText }));
 
   // 5. Check if navigation tool was invoked
   let shouldNavigate = false;
