@@ -44,7 +44,9 @@ const GraphState = Annotation.Root({
 
 const systemPrompt = `You are a hospital management backend assistant. 
 When you receive a query about listing doctors, you MUST invoke the GetDoctorsListTool.
-When you receive a query about scheduling an appointment, you MUST extract the patient name, doctor name, time, and reason, and invoke the CreateAppointmentTool.
+When you receive a query about scheduling an appointment:
+1. If you only have the patient's name, you MUST first invoke GetUserByNameTool to look up their userId.
+2. Once you have retrieved the userId, invoke CreateAppointmentTool using that userId, doctor name, time, and reason.
 Never answer appointment scheduling or doctor listing questions from memory; always use the tools.`;
 
 const llm = new ChatGroq({
@@ -101,7 +103,7 @@ export async function executeGraphQuery(
   // 1. Load prior messages from Redis chat history
   const redisHistory = getRedisChatHistory(sessionId);
   const historicMessages = await redisHistory.getMessages();
-  const trimmedHistory = historicMessages.slice(-5);
+  const trimmedHistory = historicMessages.slice(-2);
 
   // 2. Wrap the incoming human query as a proper LangChain HumanMessage
   const currentMessage = new HumanMessage({
