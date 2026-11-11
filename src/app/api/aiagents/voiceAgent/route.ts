@@ -37,7 +37,7 @@ export const getRedisChatHistory = (sessionId: string) => {
 // Define LangGraph State Schema
 const GraphState = Annotation.Root({
   messages: Annotation<any[]>({
-    reducer: (left, right) => left.concat(right),
+    reducer: (left, right) => left.concat(right).slice(-6),
     default: () => [],
   }),
 });
@@ -149,7 +149,14 @@ export async function executeGraphQuery(
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const text = await req.text();
+
+    // Check if body is empty
+    if (!text || text.trim() === "") {
+      return NextResponse.json({ error: "Request body is empty" }, { status: 400 });
+    }
+
+    const body = await JSON.parse(text);
     const { query, sessionId, language } = body;
 
     if (!query || !sessionId) {
