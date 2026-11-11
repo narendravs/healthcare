@@ -1,6 +1,7 @@
 import { Tool, StructuredTool } from "@langchain/core/tools";
 import { getUserByExactName, getPatient } from "@/lib/actions/patient.actions";
 import { getDoctors } from "@/lib/actions/doctors.actions";
+import { createAppointment } from "@/lib/actions/appointment.actions";
 import { z } from "zod";
 
 export class GetUserByNameTool extends Tool {
@@ -45,13 +46,11 @@ export class GetPatientTool extends Tool {
   }
 }
 
-// Tool to create appointments
-import { createAppointment } from "@/lib/actions/appointment.actions";
-
 export class CreateAppointmentTool extends StructuredTool {
   name = "create_appointment";
-  
-  description = "Creates a new medical appointment record in the database after all details are gathered.";
+
+  description =
+    "Creates a new medical appointment record in the database after all details are gathered.";
 
   // 🔑 Define explicit Zod schema so Groq/Llama knows exact property types
   schema = z.object({
@@ -66,24 +65,45 @@ export class CreateAppointmentTool extends StructuredTool {
 
   async _call(input: z.infer<typeof this.schema>): Promise<string> {
     try {
-      
-      // Sanitize date input
-      const sanitizedSchedule = new Date(input.schedule).toISOString();
+      let rawSchedule = input.schedule.trim();
+
+      // If the LLM passed a string without a timezone offset (e.g., "2026-06-05T15:00:00"),
+      // explicitly append the IST offset (+05:30) to prevent UTC misinterpretation.
+      if (
+        !rawSchedule.endsWith("Z") &&
+        !rawSchedule.includes("+") &&
+        !rawSchedule.includes("-", 10)
+      ) {
+        rawSchedule = `${rawSchedule}+05:30`;
+      }
+
+      const parsedDate = new Date(rawSchedule);
+
+      if (isNaN(parsedDate.getTime())) {
+        return JSON.stringify({
+          status: "error",
+          message:
+            "Invalid schedule date format provided. Please supply a valid ISO 8601 date string.",
+        });
+      }
 
       const appointmentData = {
         userId: input.userId,
         patient: input.patient,
         primaryPhysician: input.primaryPhysician,
         reason: input.reason,
-        schedule: new Date(sanitizedSchedule),
+        schedule: parsedDate.toISOString(), // Store in ISO format for consistency
         status: (input.status || "pending") as "pending" | "scheduled" | "cancelled",
         note: input.note || "",
       };
 
       const newAppointment = await createAppointment(appointmentData);
-      
+
       if (!newAppointment) {
-        return JSON.stringify({ status: "error", message: "Failed to create document in database." });
+        return JSON.stringify({
+          status: "error",
+          message: "Failed to create document in database.",
+        });
       }
 
       return JSON.stringify({
