@@ -5,19 +5,12 @@ import Link from "next/link";
 import PasskeyModal from "@/components/PasskeyModal";
 import PatientForm from "@/components/forms/PatientForm";
 import { useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import ChatBox from "@/components/chat/ChatBox";
 import { VoiceAssistantControl } from "@/components/livekit/LiveKitRoom";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import EndCallButton from "@/components/livekit/EndCallButton";
+import ThemeToggle from "@/components/home/ThemeToggle";
 
 const HomeContent = () => {
   const [mounted, setMounted] = useState(false);
@@ -32,7 +25,6 @@ const HomeContent = () => {
   const [roomName, setRoomName] = useState<string>("");
 
   const type = "database";
-  const { setTheme, theme } = useTheme();
   const param = useSearchParams();
   const admin = param.get("admin");
 
@@ -220,29 +212,9 @@ const HomeContent = () => {
           className="side-img min-h-screen w-auto flex-1 object-cover"
           priority
         />
-        <div className="absolute top-0 right-0 mt-[3px] mr-[3px] p-5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                {mounted && theme === "dark" ? (
-                  <Moon className="h-[1.2rem] w-[1.2rem]" />
-                ) : (
-                  <Sun className="h-[1.2rem] w-[1.2rem]" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="justify-content-center z-[10000] flex flex-col items-center bg-gray-400 text-white"
-            >
-              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <span>
-            <h1 className="text-1xl hidden font-bold text-black md:block">Select the mode</h1>
-          </span>
+        <div className="absolute top-0 right-0 mt-[3px] mr-[3px] hidden items-center gap-2 p-5 md:flex">
+          <h1 className="text-1xl font-bold text-black">Select the mode</h1>
+          <ThemeToggle />
         </div>
         {open && <ChatBox onClose={closeChat} type={type} sessionId={chatSessionId} />}
       </div>
