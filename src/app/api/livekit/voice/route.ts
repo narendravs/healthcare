@@ -52,7 +52,8 @@ export async function GET() {
       agents: [
         new RoomAgentDispatch({
           agentName: AGENT_NAME,
-          ...(AGENT_DEPLOYMENT ? { deployment: AGENT_DEPLOYMENT } : {}),
+          // Only pass deployment if it explicitly starts with 'dev-'
+          ...(AGENT_DEPLOYMENT.startsWith("dev-") ? { deployment: AGENT_DEPLOYMENT } : {}),
         }),
       ],
     });
